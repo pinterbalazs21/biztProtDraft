@@ -1,0 +1,3 @@
+enckey: 0123456789abcdef0123456789abcdef
+mackey: fedcba9876543210fedcba9876543210
+sndsqn: 0

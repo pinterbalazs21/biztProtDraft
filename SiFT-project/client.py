@@ -1,7 +1,6 @@
 from socket import RCVALL_SOCKETLEVELONLY
-import sys, getopt
+import sys
 
-from matplotlib.pyplot import rc
 from Crypto.Cipher import AES
 
 #debug variables:

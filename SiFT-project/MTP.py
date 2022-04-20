@@ -4,13 +4,11 @@ from Crypto.PublicKey import RSA
 from Crypto.Cipher import AES, PKCS1_OAEP
 from Crypto.Hash import SHA256
 from Crypto import Random
-
-#key = b'0123456789abcdef0123456789abcdef'
+from Crypto.Protocol.KDF import HKDF
 
 
 class MTP:
     def __init__(self):
-        self.loginHash = ''
         self.sqn = 1
         self.rcvsqn = 0
         print('MTP_INIT')
@@ -25,7 +23,9 @@ class MTP:
         header_rsv = b'\x00\x00'
         return header_version + header_type + header_length + header_sqn + header_rnd + header_rsv
 
-    def decryptAndVerify(self,key ,msg):#nonce: sqn + rnd
+    def decryptAndVerify(self,msg, key = None):#nonce: sqn + rnd
+        if key is None:
+            key = self.finalKey
         header = msg[0:16]
         encrypted_payload = msg[16:-12]
         nonce = header[6:14] #sqn:header[6:8], rnd = header[8:14]
@@ -36,7 +36,6 @@ class MTP:
             print("Warning: Message length value in header is wrong!")
             print("Processing is continued nevertheless...")
 
-        #rcvsqn = 0 # todo store and update recent sqn
         print("Expecting sequence number " + str(self.rcvsqn + 1) + " or larger...")
         sndsqn = int.from_bytes(header_sqn, byteorder='big')
         if (sndsqn <= self.rcvsqn):
@@ -56,7 +55,9 @@ class MTP:
         print("Operation was successful: message is intact, content is decrypted.")
         return payload
 
-    def encriptAndAuth(self,key ,typ, payload, msg_length):
+    def encriptAndAuth(self, typ, payload, msg_length, key = None):
+        if key is None:
+            key = self.finalKey
         header = self.createHeader(typ, msg_length)#todo sqn MTPselfben tárolni vagy máshol?
         nonce = header[6:14] #sqn:[6:8], rnd = [8:14]
         AE = AES.new(key, AES.MODE_GCM, nonce=nonce, mac_len=12)
@@ -64,6 +65,12 @@ class MTP:
         encrypted_payload, authtag = AE.encrypt_and_digest(payload)
         self.sqn += 1
         return header + encrypted_payload + authtag#msg
+
+
+class LoginProtocol:
+    def __init__(self, MTP):
+        self.loginHash = ''
+        self.MTP = MTP
 
     def load_publickey(self, pubkeyfile):
         with open(pubkeyfile, 'rb') as f:
@@ -74,35 +81,81 @@ class MTP:
             print('Error: Cannot import public key from file ' + pubkeyfile)
             sys.exit(1)
 
-    def encryptLoginReq(self, loginReq): # loginReq == payload
+    def encryptLoginReq(self, loginReq):  # loginReq == payload
         print("Encrypting login req")
         tk = Random.get_random_bytes(32)
-        msgLen = 16 + len(loginReq) + 12 + 256 #length of header, (encripted) payload, auth mac + ETK
-        msg = self.encriptAndAuth(tk, b'\x00\x00', loginReq, msgLen)
+        msgLen = 16 + len(loginReq) + 12 + 256  # length of header, (encripted) payload, auth mac + ETK
+        msg = self.MTP.encriptAndAuth(b'\x00\x00', loginReq, msgLen, tk)
         pubkey = self.load_publickey("public.key")
         RSAcipher = PKCS1_OAEP.new(pubkey)
         etk = RSAcipher.encrypt(tk)
         return msg + etk, tk
 
     def encryptLoginResp(self, payload, tk):
-        loginRes, rand = self.createLoginRes(payload)
+        print("Encrypting login response")
+        loginRes = self.createLoginRes(payload)
+        hash = loginRes[0:64]
+        rand = loginRes[65:]
         msgLen = 12 + len(loginRes) + 16
-        response = self.encriptAndAuth(tk, b'\x00\x10', loginRes, msgLen)
-        return response, rand
+        response = self.MTP.encriptAndAuth(b'\x00\x10', loginRes, msgLen, tk)
+        return response, hash, rand
 
     def createLoginReq(self, username, password):
         rand = Random.get_random_bytes(16).hex()
         loginReq = str(time.time_ns()) + '\n' + username + '\n' + password + '\n' + rand
         self.loginHash = self.getHash(loginReq.encode("utf-8"))
-        return loginReq, rand #type: str
+        return loginReq, rand  # type: str
 
     def createLoginRes(self, recievedPayloadStr):
         rand = Random.get_random_bytes(16).hex()
-        strResponse = self.getHash(recievedPayloadStr) + '\n' + rand #type: str
-        return strResponse.encode("utf-8"), rand # request hash + random bytes,
+        strResponse = self.getHash(recievedPayloadStr) + '\n' + rand  # type: str
+        return strResponse.encode("utf-8")  # request hash + random bytes,
 
+    def decryptLoginReqest(self, rawMSG, keypair):
+        #accepts and verifies loginRequests
+        # decripting encrypted temporary key
+        etk = rawMSG[-256:]
+        RSAcipher = PKCS1_OAEP.new(keypair)
+        tk = RSAcipher.decrypt(etk)
+        # decripting msg using the tk
+        msg = rawMSG[:-256]
+        loginReq = self.MTP.decryptAndVerify(msg, tk)
+        return loginReq, tk
+
+    def decryptLoginRes(self, tk, msg):
+        payload = self.MTP.decryptAndVerify(msg, tk)
+        # üzenetben stringként 1 byte == 2 hexa szám-->64 hosszú str
+        if self.loginHash != payload[0:64].decode('utf-8'):
+            print("Wrong Hash Value")
+        return payload
 
     def getHash(self, payload):
         h = SHA256.new()
         h.update(payload)
         return h.hexdigest()
+
+    def createFinalKey(self, ikey, salt):
+        self.MTP.finalKey = HKDF(ikey, 32, salt, SHA256)
+        print("Final key constructed:")
+        print(self.MTP.finalKey)
+
+
+class CommandsProtocol:
+    def __init__(self, MTP):
+        self.MTP = MTP
+
+    #creates command request body
+    # type can be: 'pwd', 'lst', 'chd', 'mkd', 'del', 'upl', 'dnl'
+    def createCommandReq(self, type, *args):
+        #todo type check or different function for each command
+        request = type
+        for parameter in args:
+            request = request + "\n" + parameter
+        return request
+
+    #creates command response body
+    def createCommandRes(self, type, requestPayload, *args):
+        response = type + "\n" + self.MTP.getHash(requestPayload)
+        for resp in args:
+            response = response + "\n" + resp
+        return response

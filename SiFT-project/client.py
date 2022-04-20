@@ -1,44 +1,52 @@
 import socket
-from MTP import MTP
+from MTP import MTP, LoginProtocol
 
-key = b'0123456789abcdef0123456789abcdef'
 class SiFTClient():
 
     def __init__(self, port = 5150):
         self.port = port
         self.host = "localhost"
         self.key = ""
+        self.msgHandler = MTP()
+        self.loginHandler = LoginProtocol(self.msgHandler)
         print("init on port" + str(self.port))
 
     def connect(self):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.connect((self.host, self.port))
-            msgHandler = MTP()
             name = 'BATMAN'
             pw = 'Z4QQQ'
-            loginPayload, client_random = msgHandler.createLoginReq(name, pw)
-            loginPayload = str.encode(loginPayload)
-            client_random = client_random.encode("utf-8")
-            msg, tk = msgHandler.encryptLoginReq(loginPayload)
-            s.sendall(msg)
-            header = s.recv(16)
-            MTPdata_size = header[4:6]
-            msgType = header[2:4]
-            len = int.from_bytes(MTPdata_size, byteorder='big')
-            if (len == 0):
-                exit(1)
-            tail = s.recv(len - 16)
-            if msgType == b'\x00\x10':
-                payload = msgHandler.decryptAndVerify(tk, header + tail)
-                #üzenetben stringként 1 byte == 2 hexa szám-->64 hosszú str
-                if msgHandler.loginHash != payload[0:64].decode('utf-8'):
-                    print("Wrong Hash Value")
-                server_random = payload[65:]
-                #final symmetric key:
-                self.key = client_random + server_random
-            print("Success ")
+            client_random, tk = self.sendConnReq(s, name, pw)
+            self.recieveConnConf(s, client_random, tk)
+            #todo command msg sending + file operation upload download stuff
 
 
+    def sendConnReq(self, s, name, pw):
+        loginPayload, client_random = self.loginHandler.createLoginReq(name, pw)
+        loginPayload = str.encode(loginPayload)
+        client_random = client_random.encode("utf-8")
+        msg, tk = self.loginHandler.encryptLoginReq(loginPayload)
+        s.sendall(msg)
+        return client_random, tk
+
+    def recieveConnConf(self, s, client_random, tk):
+        header = s.recv(16)
+        MTPdata_size = header[4:6]
+        msgType = header[2:4]
+        len = int.from_bytes(MTPdata_size, byteorder='big')
+        if (len == 0):
+            exit(1)
+        tail = s.recv(len - 16)
+        if msgType == b'\x00\x10':
+            payload = self.loginHandler.decryptLoginRes(tk, header + tail)
+            server_random = payload[65:]
+            # final symmetric key:
+            ikey = client_random + server_random
+            salt = payload[:64]
+            self.loginHandler.createFinalKey(ikey, salt)
+            print("Connection established")
+            return
+        print("something went wrong (wrong message type)")
 
     def pwd(self):
         #Print current working directory

@@ -1,8 +1,10 @@
 import socket
 import time
 import threading
-from MTP import MTP, LoginProtocol
+from MTP import MTP, LoginProtocol, CommandsProtocol
 from Crypto.PublicKey import RSA
+import os
+from Crypto.Hash import SHA256
 from Crypto.Cipher import PKCS1_OAEP
 
 
@@ -32,6 +34,7 @@ class SiFTServer:
 
     def listen(self, conn, addr):
         msgHandler = MTP()
+        commandHandler = CommandsProtocol(msgHandler)
         with conn:
             print(f"Connected by {addr}")
             #accepts and verifies login request
@@ -47,7 +50,11 @@ class SiFTServer:
                 if (len == 0):
                     continue
                 tail = conn.recv(len - 16)
+                if msgType == b'\x01\x00':
+                    print("command recieved")
+                    self.acceptCommandReq(commandHandler, conn, header + tail)
                 print("siuuuu")
+
 
     def acceptLoginReq(self, loginHandler, conn):
         header = conn.recv(16)  # header
@@ -83,10 +90,42 @@ class SiFTServer:
             conn.sendall(response)
             print()
 
+    def acceptCommandReq(self, commandHandler, conn, rawMSG):
+        #decripts and verifies request, if ok: execute command otherwise: connection close
+        command, args = commandHandler.decryptCommandReq(rawMSG)
+        print(command)
+        if command == "pwd": # 0 args
+            print("command request: pwd")
+            #todo failure handling
+            response = commandHandler.encryptCommandRes(command, rawMSG, 'success', os.getcwd())
+            conn.sendall(response)
+            print("command response sent: pwd")
+        elif command == "lst": # 0 args
+            print("command request: lst")
+            #todo
+        elif command == "chd": # 1 args
+            print("command request: chd")
+            #todo
+        elif command == "mkd": # 1 args
+            print("command request: mkd")
+            #todo
+        elif command == "del": # 1 args
+            print("command request: del")
+            #todo
+        elif command == "upl": # 3 args
+            print("command request: upl")
+            #todo
+        elif command == "dnl": # 1 args
+            print("command request: dnl")
+            #todo
+
+
+    #todo ez mehetne MTP-be checknél
     def checkTimeTreshold(self, timeStampStr, window = 2E9):
         timeStamp = int(timeStampStr)
         currentTime = time.time_ns()
         return (currentTime - window/2) < timeStamp & timeStamp < (currentTime + window/2)
+
 
 server = SiFTServer()
 server.listenAll()

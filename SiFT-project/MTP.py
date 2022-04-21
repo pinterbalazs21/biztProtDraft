@@ -55,9 +55,12 @@ class MTP:
         print("Operation was successful: message is intact, content is decrypted.")
         return payload
 
-    def encriptAndAuth(self, typ, payload, msg_length, key = None):
+    def encriptAndAuth(self, typ, payload, msg_length = 0, key = None):
+        # = 0, = None: derived default values
         if key is None:
             key = self.finalKey
+        if msg_length == 0:
+            msg_length = 12 + len(payload) + 16
         header = self.createHeader(typ, msg_length)#todo sqn MTPselfben tárolni vagy máshol?
         nonce = header[6:14] #sqn:[6:8], rnd = [8:14]
         AE = AES.new(key, AES.MODE_GCM, nonce=nonce, mac_len=12)
@@ -149,13 +152,38 @@ class CommandsProtocol:
     def createCommandReq(self, type, *args):
         #todo type check or different function for each command
         request = type
-        for parameter in args:
-            request = request + "\n" + parameter
-        return request
+        if args:# has at least 1 param
+            for parameter in args:
+                request = request + "\n" + parameter
+        return request.encode("utf-8")
 
     #creates command response body
     def createCommandRes(self, type, requestPayload, *args):
-        response = type + "\n" + self.MTP.getHash(requestPayload)
-        for resp in args:
-            response = response + "\n" + resp
-        return response
+        response = type + "\n" + self.getHash(requestPayload)
+        if args:# has at least 1 param
+            for resp in args:
+                response = response + "\n" + resp
+        return response.encode("utf-8")
+
+    def encryptCommandReq(self, commandType, *args):
+        payload = self.createCommandReq(commandType, *args)
+        return self.MTP.encriptAndAuth(b'\x01\x00', payload)
+
+    def encryptCommandRes(self, commandType, requestPayload, *args):
+        payload = self.createCommandRes(commandType, requestPayload, *args)
+        return self.MTP.encriptAndAuth(b'\x01\x10', payload)
+
+    def decryptCommandReq(self, rawMSG):
+        #todo type verification and exception? (b'\x01\x10' or b'\x01\x00')
+        decryptedPayload = self.MTP.decryptAndVerify(rawMSG).decode("utf-8")
+        commandList = decryptedPayload.splitlines()
+        commandTypeStr = commandList[0]
+        args = ()
+        if len(commandList) > 1:
+            args = decryptedPayload[1:]
+        return commandTypeStr, args
+
+    def getHash(self, payload):
+        h = SHA256.new()
+        h.update(payload)
+        return h.hexdigest()

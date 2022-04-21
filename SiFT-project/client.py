@@ -1,5 +1,5 @@
 import socket
-from MTP import MTP, LoginProtocol
+from MTP import MTP, LoginProtocol, CommandsProtocol
 
 class SiFTClient():
 
@@ -9,6 +9,7 @@ class SiFTClient():
         self.key = ""
         self.msgHandler = MTP()
         self.loginHandler = LoginProtocol(self.msgHandler)
+        self.commandHandler = CommandsProtocol(self.msgHandler)
         print("init on port" + str(self.port))
 
     def connect(self):
@@ -18,6 +19,9 @@ class SiFTClient():
             pw = 'Z4QQQ'
             client_random, tk = self.sendConnReq(s, name, pw)
             self.recieveConnConf(s, client_random, tk)
+            reqMsg = self.commandHandler.encryptCommandReq("pwd")
+            print("reqMsg constructed")
+            s.sendall(reqMsg)
             #todo command msg sending + file operation upload download stuff
 
 
@@ -48,9 +52,14 @@ class SiFTClient():
             return
         print("something went wrong (wrong message type)")
 
+    def recieveCommandResponse(self):
+        print("todo")
+        #response = self.
+
     def pwd(self):
         #Print current working directory
         print("pwd")
+
 
     def lst(self):
         #List content of the current working directory

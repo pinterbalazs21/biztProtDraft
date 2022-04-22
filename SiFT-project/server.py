@@ -92,7 +92,8 @@ class SiFTServer:
 
     def acceptCommandReq(self, commandHandler, conn, rawMSG):
         #decripts and verifies request, if ok: execute command otherwise: connection close
-        command, args = commandHandler.decryptCommandReq(rawMSG)
+        command, args = commandHandler.decryptCommandMsg(rawMSG)
+        #args tuple!
         print(command)
         if command == "pwd": # 0 args
             print("command request: pwd")
@@ -102,6 +103,8 @@ class SiFTServer:
             print("command response sent: pwd")
         elif command == "lst": # 0 args
             print("command request: lst")
+            response = commandHandler.encryptCommandRes(command, rawMSG, 'success', os.getcwd())
+            conn.sendall(response)
             #todo
         elif command == "chd": # 1 args
             print("command request: chd")

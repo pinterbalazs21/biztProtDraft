@@ -173,14 +173,14 @@ class CommandsProtocol:
         payload = self.createCommandRes(commandType, requestPayload, *args)
         return self.MTP.encriptAndAuth(b'\x01\x10', payload)
 
-    def decryptCommandReq(self, rawMSG):
+    def decryptCommandMsg(self, rawMSG):
         #todo type verification and exception? (b'\x01\x10' or b'\x01\x00')
         decryptedPayload = self.MTP.decryptAndVerify(rawMSG).decode("utf-8")
         commandList = decryptedPayload.splitlines()
         commandTypeStr = commandList[0]
         args = ()
         if len(commandList) > 1:
-            args = decryptedPayload[1:]
+            args = commandList[1:]
         return commandTypeStr, args
 
     def getHash(self, payload):

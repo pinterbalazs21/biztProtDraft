@@ -19,10 +19,14 @@ class SiFTClient():
             pw = 'Z4QQQ'
             client_random, tk = self.sendConnReq(s, name, pw)
             self.recieveConnConf(s, client_random, tk)
-            reqMsg = self.commandHandler.encryptCommandReq("pwd")
-            print("reqMsg constructed")
-            s.sendall(reqMsg)
-            #todo command msg sending + file operation upload download stuff
+            while True:
+                rawCommmand = input()
+                command = rawCommmand.split()[0]
+                #todo handle args
+                reqMsg = self.commandHandler.encryptCommandReq(command)
+                print("reqMsg constructed")
+                s.sendall(reqMsg)
+                self.recieveCommandResponse(s)
 
 
     def sendConnReq(self, s, name, pw):
@@ -52,9 +56,37 @@ class SiFTClient():
             return
         print("something went wrong (wrong message type)")
 
-    def recieveCommandResponse(self):
-        print("todo")
-        #response = self.
+    def recieveCommandResponse(self, s):
+        header = s.recv(16)
+        MTPdata_size = header[4:6]
+        msgType = header[2:4]
+        len = int.from_bytes(MTPdata_size, byteorder='big')
+        if (len == 0):
+            exit(1)
+        tail = s.recv(len - 16)
+        if msgType == b'\x01\x10':
+            command, args = self.commandHandler.decryptCommandMsg(header + tail)
+            #todo args[0] hash, kell vele vmit csinalni?
+            for a in args:
+                print(a)
+            commandsToFail = ['pwd', 'lst', 'chd', 'mkd', 'del']
+            commandsToReject = ['upl', 'dnl']
+            if command in commandsToReject:
+                if args[1] == 'reject':
+                    print("command " + command + " rejected: " + args[2] )
+                    s.close()
+                elif args[1] == 'succes':
+                    self.printResult(command, args)
+
+            elif command in commandsToFail and args[1] == "failure":
+                print("command " + command + " failed: " + args[2])
+                s.close()
+
+
+    def printResult(self, command, args):
+        if command == ("pwd" or "lst"):
+            print(args[3])
+        #todo dnl is ir ki vmit?
 
     def pwd(self):
         #Print current working directory

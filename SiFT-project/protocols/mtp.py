@@ -54,11 +54,9 @@ class MTP:
     def encryptAndAuth(self, typ, payload, msg_length = 0, key = None):
         """
         Encryption and authentication service of MTP
-        :param typ:
-        :param payload:
-        :param msg_length:
-        :param key:
-        :return:
+        :param typ: 2 byte message type field (see protocol description)
+        :param msg_length: length of the entire message, including header, in bytes, in big endian
+        :return: encrypted message
         """
         # = 0, = None: derived default values
         if key is None:
@@ -71,4 +69,4 @@ class MTP:
         AE.update(header)
         encrypted_payload, authtag = AE.encrypt_and_digest(payload)
         self.sqn += 1
-        return header + encrypted_payload + authtag#msg
+        return header + encrypted_payload + authtag # msg

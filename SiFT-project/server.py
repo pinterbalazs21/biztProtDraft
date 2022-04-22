@@ -1,12 +1,12 @@
 import socket
-import time
 import threading
 
 from protocols.commands import CommandsProtocol
-from protocols.login import LoginProtocol
 from protocols.mtp import MTP
 from Crypto.PublicKey import RSA
 import os
+
+from protocols.server.loginServer import ServerLoginProtocol
 
 class SiFTServer:
     def __init__(self, port=5150):
@@ -24,6 +24,9 @@ class SiFTServer:
 
     def listenAll(self):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            # TODO this is here to prevent "Address already in use", not sure, but probably should be deleted when not debugging anymore
+            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+
             s.bind((self.host, self.port))
             s.listen(5)
             while True:
@@ -34,13 +37,16 @@ class SiFTServer:
 
     def listen(self, conn, addr):
         msgHandler = MTP()
-        commandHandler = CommandsProtocol(msgHandler)
+        loginHandler = ServerLoginProtocol(msgHandler)
+
         with conn:
             print(f"Connected by {addr}")
-            #accepts and verifies login request
-            #if ok: response, otherwise: close connection
-            self.acceptLoginReq(LoginProtocol(msgHandler), conn)
-            #waiting for message loop
+            # accepts and verifies login request
+            # if ok: response, otherwise: close connection
+            loginHandler.acceptLoginRequest(conn, self.keypair)
+
+            # waiting for message loop (commands protocol)
+            commandHandler = CommandsProtocol(msgHandler)
             while True:
                 #todo
                 header = conn.recv(16)
@@ -55,45 +61,12 @@ class SiFTServer:
                     self.acceptCommandReq(commandHandler, conn, header + tail)
                 print("siuuuu")
 
-
-    def acceptLoginReq(self, loginHandler, conn):
-        header = conn.recv(16)  # header
-        MTPdata_size = header[4:6]
-        msgType = header[2:4]
-        len = int.from_bytes(MTPdata_size, byteorder='big')
-        if (len == 0):
-            return#todo connection close?
-        tail = conn.recv(len - 16)  # msg_size - header size
-        # login request
-        if msgType == b'\x00\x00':  # python 3.10 tud már match-case-t (switch case helyett)
-            logReq, tk = loginHandler.decryptLoginReqest(header + tail, self.keypair)
-            # todo close connection in case of failed verification
-            data = logReq.decode("utf-8").splitlines()
-            timeStampStr = data[0]
-            name = data[1]
-            pw = data[2]
-            client_random = data[3].encode("utf-8")  # first part of final key
-            print(client_random)
-            print("Time: " + timeStampStr)
-            print("name " + name)
-            print("pw " + pw)
-            if not self.checkTimeTreshold(timeStampStr):
-                print("Wrong timestamp")
-                conn.close()
-                return
-            # todo password hashing check
-            if not logReq:
-                return
-            response, salt, server_random = loginHandler.encryptLoginResp(logReq, tk)
-            ikey = client_random + server_random
-            loginHandler.createFinalKey(ikey, salt)
-            conn.sendall(response)
-            print()
-
     def acceptCommandReq(self, commandHandler, conn, rawMSG):
-        #decripts and verifies request, if ok: execute command otherwise: connection close
+        """
+        Decrypts and verifies request, if ok: execute command otherwise: connection close
+        """
         command, args = commandHandler.decryptCommandMsg(rawMSG)
-        #args tuple!
+        # args tuple!
         print(command)
         if command == "pwd": # 0 args
             print("command request: pwd")
@@ -121,14 +94,6 @@ class SiFTServer:
         elif command == "dnl": # 1 args
             print("command request: dnl")
             #todo
-
-
-    #todo ez mehetne MTP-be checknél
-    def checkTimeTreshold(self, timeStampStr, window = 2E9):
-        timeStamp = int(timeStampStr)
-        currentTime = time.time_ns()
-        return (currentTime - window/2) < timeStamp & timeStamp < (currentTime + window/2)
-
 
 server = SiFTServer()
 server.listenAll()

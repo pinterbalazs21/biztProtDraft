@@ -1,7 +1,7 @@
 import socket
 
+from protocols.client.loginClient import ClientLoginProtocol
 from protocols.commands import CommandsProtocol
-from protocols.login import LoginProtocol
 from protocols.mtp import MTP
 
 class SiFTClient():
@@ -11,17 +11,18 @@ class SiFTClient():
         self.host = "localhost"
         self.key = ""
         self.msgHandler = MTP()
-        self.loginHandler = LoginProtocol(self.msgHandler)
+        self.loginHandler = ClientLoginProtocol(self.msgHandler)
         self.commandHandler = CommandsProtocol(self.msgHandler)
         print("init on port" + str(self.port))
 
     def connect(self):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.connect((self.host, self.port))
-            name = 'BATMAN'
-            pw = 'Z4QQQ'
-            client_random, tk = self.sendConnReq(s, name, pw)
-            self.recieveConnConf(s, client_random, tk)
+
+            # execute login protocol
+            self.loginHandler.executeLogin(s)
+
+            # start commands protocol
             while True:
                 rawCommmand = input()
                 command = rawCommmand.split()[0]
@@ -29,37 +30,9 @@ class SiFTClient():
                 reqMsg = self.commandHandler.encryptCommandReq(command)
                 print("reqMsg constructed")
                 s.sendall(reqMsg)
-                self.recieveCommandResponse(s)
+                self.receiveCommandResponse(s)
 
-
-    def sendConnReq(self, s, name, pw):
-        loginPayload, client_random = self.loginHandler.createLoginReq(name, pw)
-        loginPayload = str.encode(loginPayload)
-        client_random = client_random.encode("utf-8")
-        msg, tk = self.loginHandler.encryptLoginReq(loginPayload)
-        s.sendall(msg)
-        return client_random, tk
-
-    def recieveConnConf(self, s, client_random, tk):
-        header = s.recv(16)
-        MTPdata_size = header[4:6]
-        msgType = header[2:4]
-        len = int.from_bytes(MTPdata_size, byteorder='big')
-        if (len == 0):
-            exit(1)
-        tail = s.recv(len - 16)
-        if msgType == b'\x00\x10':
-            payload = self.loginHandler.decryptLoginRes(tk, header + tail)
-            server_random = payload[65:]
-            # final symmetric key:
-            ikey = client_random + server_random
-            salt = payload[:64]
-            self.loginHandler.createFinalKey(ikey, salt)
-            print("Connection established")
-            return
-        print("something went wrong (wrong message type)")
-
-    def recieveCommandResponse(self, s):
+    def receiveCommandResponse(self, s):
         header = s.recv(16)
         MTPdata_size = header[4:6]
         msgType = header[2:4]
@@ -98,7 +71,7 @@ class SiFTClient():
 
     def lst(self):
         #List content of the current working directory
-        print("pwd")
+        print("lst")
 
     def mkd(self, dirName):
         """

@@ -11,14 +11,15 @@ class ClientLoginProtocol:
     def __init__(self, MTP):
         self.loginHash = ''
         self.MTP = MTP
+        self.pubkeyfile = "public.key"
 
-    def __load_publickey(self, pubkeyfile):
-        with open(pubkeyfile, 'rb') as f:
+    def __load_publickey(self):
+        with open(self.pubkeyfile, 'rb') as f:
             pubkeystr = f.read()
         try:
             return RSA.import_key(pubkeystr)
         except ValueError:
-            print('Error: Cannot import public key from file ' + pubkeyfile)
+            print('Error: Cannot import public key from file ' + self.pubkeyfile)
             sys.exit(1)
 
     def __createFinalKey(self, ikey, salt):
@@ -31,7 +32,7 @@ class ClientLoginProtocol:
         tk = Random.get_random_bytes(32)
         msgLen = 16 + len(loginReq) + 12 + 256  # length of header, (encrypted) payload, auth mac + ETK
         msg = self.MTP.encryptAndAuth(b'\x00\x00', loginReq, msgLen, tk)
-        pubkey = self.__load_publickey("public.key")
+        pubkey = self.__load_publickey()
         RSAcipher = PKCS1_OAEP.new(pubkey)
         etk = RSAcipher.encrypt(tk)
         return msg + etk, tk

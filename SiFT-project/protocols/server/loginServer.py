@@ -80,6 +80,7 @@ class ServerLoginProtocol:
         return pwdhash
 
     def __checkUserData(self, username, password):
+        #return True
         with open(self.userdatafile, newline='') as csvfile:
             userdata = csv.reader(csvfile, delimiter=',')
             try:

@@ -58,9 +58,7 @@ class SiFTServer:
                     continue
                 tail = conn.recv(len - 16)
                 if msgType == b'\x01\x00':
-                    print("command recieved")
                     self.acceptCommandReq(commandHandler, conn, header + tail)
-                print("siuuuu")
 
     def acceptCommandReq(self, commandHandler, conn, rawMSG):
         """
@@ -117,14 +115,27 @@ class SiFTServer:
                 os.mkdir(path)
                 response = commandHandler.encryptCommandRes(command, rawMSG, 'success')
                 conn.sendall(response)
-            except OSError as error:
+            except Exception as error:#todo OSError?
                 print(type(error))
-                response = commandHandler.encryptCommandRes(command, rawMSG, 'failure', error)
+                response = commandHandler.encryptCommandRes(command, rawMSG, 'failure', str(error))
                 conn.sendall(response)
-            #todo
+
         elif command == "del": # 1 args
             print("command request: del")
-            #todo
+            try:
+                path = os.path.join(os.getcwd(), args[0])
+                if os.path.exists(path) and os.path.isfile(path):
+                    os.remove(path)
+                elif os.path.exists(path) and len(os.listdir(path)) == 0:
+                    os.rmdir(path)
+                else:
+                    raise Exception('File or folder does not exist (or not empty)')
+                response = commandHandler.encryptCommandRes(command, rawMSG, 'success')
+                conn.sendall(response)
+            except Exception as error:
+                response = commandHandler.encryptCommandRes(command, rawMSG, 'failure', str(error))
+                conn.sendall(response)
+
         elif command == "upl": # 3 args
             print("command request: upl")
             #todo

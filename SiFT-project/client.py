@@ -38,7 +38,7 @@ class SiFTClient():
                 reqMsg = self.commandHandler.encryptCommandReq(command, *args)
                 print("reqMsg constructed")
                 s.sendall(reqMsg)
-                self.receiveCommandResponse(s)
+                self.receiveCommandResponse(s, reqMsg)
 
     def receiveCommandResponse(self, s, reqMsg):
         header = s.recv(16)
@@ -53,20 +53,19 @@ class SiFTClient():
             originalHash = self.commandHandler.getHash(reqMsg)
             if originalHash != args[0]:
                 s.close()
-            #todo args[0] hash, kell vele vmit csinalni?
+                print("connection closed due to wrong hash")
+                exit(1)
             commandsToFail = ['pwd', 'lst', 'chd', 'mkd', 'del']
             commandsToReject = ['upl', 'dnl']
             if command in commandsToReject:
                 if args[1] == 'reject':
                     print("command " + command + " rejected: " + args[2] )
-                    s.close()
                 elif args[1] == 'success':
                     self.printResult(command, *args)
 
             elif command in commandsToFail:
-                if args[1] == 'reject':
+                if args[1] == 'failure':
                     print("command " + command + " failed: " + args[2])
-                    s.close()
                 elif args[1] == 'success':
                     print("success")
                     self.printResult(command, *args)

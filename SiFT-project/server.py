@@ -5,6 +5,7 @@ from protocols.commands import CommandsProtocol
 from protocols.mtp import MTP
 from Crypto.PublicKey import RSA
 import os
+import base64
 
 from protocols.server.loginServer import ServerLoginProtocol
 
@@ -70,18 +71,37 @@ class SiFTServer:
         print(command)
         if command == "pwd": # 0 args
             print("command request: pwd")
-            #todo failure handling
-            response = commandHandler.encryptCommandRes(command, rawMSG, 'success', os.getcwd())
-            conn.sendall(response)
-            print("command response sent: pwd")
+            try:
+                wd = os.getcwd()
+                response = commandHandler.encryptCommandRes(command, rawMSG, 'success', wd)
+                conn.sendall(response)
+            except OSError:
+                response = commandHandler.encryptCommandRes(command, rawMSG, 'failure')
+                conn.sendall(response)
+
         elif command == "lst": # 0 args
             print("command request: lst")
-            response = commandHandler.encryptCommandRes(command, rawMSG, 'success', os.getcwd())
-            conn.sendall(response)
-            #todo
+            try:
+                lstResult = os.listdir()
+                lstStr = '\n'.join([str(item) for item in lstResult])
+                print(lstStr)
+                encodedStr = base64.b64encode(lstStr.encode('utf-8')).decode('utf-8')
+                response = commandHandler.encryptCommandRes(command, rawMSG, 'success', encodedStr)
+                conn.sendall(response)
+            except OSError:
+                response = commandHandler.encryptCommandRes(command, rawMSG, 'failure', "OSError")
+                conn.sendall(response)
+
         elif command == "chd": # 1 args
             print("command request: chd")
-            #todo
+            try:
+                os.chdir(args[0])
+            except OSError:
+                response = commandHandler.encryptCommandRes(command, rawMSG, 'failure', "OSError occured")
+                conn.sendall(response)
+            response = commandHandler.encryptCommandRes(command, rawMSG, 'success')
+            conn.sendall(response)
+
         elif command == "mkd": # 1 args
             print("command request: mkd")
             #todo

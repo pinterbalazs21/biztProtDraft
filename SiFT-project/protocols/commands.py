@@ -6,7 +6,7 @@ class CommandsProtocol:
 
     #creates command request body
     # type can be: 'pwd', 'lst', 'chd', 'mkd', 'del', 'upl', 'dnl'
-    def createCommandReq(self, type, *args):
+    def __createCommandReq(self, type, *args):
         #todo type check or different function for each command
         request = type
         if args:# has at least 1 param
@@ -15,7 +15,7 @@ class CommandsProtocol:
         return request.encode("utf-8")
 
     #creates command response body
-    def createCommandRes(self, type, requestPayload, *args):
+    def __createCommandRes(self, type, requestPayload, *args):
         response = type + "\n" + self.getHash(requestPayload)
         if args:# has at least 1 param
             for resp in args:
@@ -23,11 +23,11 @@ class CommandsProtocol:
         return response.encode("utf-8")
 
     def encryptCommandReq(self, commandType, *args):
-        payload = self.createCommandReq(commandType, *args)
+        payload = self.__createCommandReq(commandType, *args)
         return self.MTP.encryptAndAuth(b'\x01\x00', payload)
 
     def encryptCommandRes(self, commandType, requestPayload, *args):
-        payload = self.createCommandRes(commandType, requestPayload, *args)
+        payload = self.__createCommandRes(commandType, requestPayload, *args)
         return self.MTP.encryptAndAuth(b'\x01\x10', payload)
 
     def decryptCommandMsg(self, rawMSG):

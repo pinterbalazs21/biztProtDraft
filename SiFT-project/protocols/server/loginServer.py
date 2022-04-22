@@ -113,8 +113,8 @@ class ServerLoginProtocol:
             self.__createFinalKey(ikey, salt)
             conn.sendall(response)
             print("Login response sent")
-
-        # todo check if this is right:
-        print("Wrong request type (not login request)")
-        conn.close()
+        else:
+            # todo check if this is right:
+            print("Wrong request type (not login request)")
+            conn.close()
         return

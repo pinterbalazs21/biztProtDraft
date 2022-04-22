@@ -3,6 +3,7 @@ import socket
 from protocols.client.loginClient import ClientLoginProtocol
 from protocols.commands import CommandsProtocol
 from protocols.mtp import MTP
+import base64
 
 class SiFTClient():
 
@@ -26,8 +27,10 @@ class SiFTClient():
             while True:
                 rawCommmand = input()
                 command = rawCommmand.split()[0]
-                #todo handle args
-                reqMsg = self.commandHandler.encryptCommandReq(command)
+                args = ()
+                if len(command) > 1:
+                    args = tuple(rawCommmand.split()[1:])
+                reqMsg = self.commandHandler.encryptCommandReq(command, *args)
                 print("reqMsg constructed")
                 s.sendall(reqMsg)
                 self.receiveCommandResponse(s)
@@ -57,11 +60,17 @@ class SiFTClient():
             elif command in commandsToFail and args[1] == "failure":
                 print("command " + command + " failed: " + args[2])
                 s.close()
+            else:
+                s.close()
 
 
     def printResult(self, command, args):
-        if command == ("pwd" or "lst"):
+        if command == ("pwd"):
             print(args[3])
+        elif command == "lst":
+            encodedLst = args[3]
+            decodedBytes = base64.b64decode(encodedLst.encode('utf-8'))
+            print(decodedBytes.decode("utf-8"))
         #todo dnl is ir ki vmit?
 
     def pwd(self):

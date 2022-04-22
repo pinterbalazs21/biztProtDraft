@@ -27,6 +27,11 @@ class SiFTClient():
             while True:
                 rawCommmand = input()
                 command = rawCommmand.split()[0]
+                commands = ['pwd', 'lst', 'chd', 'mkd', 'del', 'upl', 'dnl']
+                if command not in commands:
+                    print("Please enter a valid command")
+                    #todo arg validation here?
+                    continue
                 args = ()
                 if len(command) > 1:
                     args = tuple(rawCommmand.split()[1:])
@@ -35,7 +40,7 @@ class SiFTClient():
                 s.sendall(reqMsg)
                 self.receiveCommandResponse(s)
 
-    def receiveCommandResponse(self, s):
+    def receiveCommandResponse(self, s, reqMsg):
         header = s.recv(16)
         MTPdata_size = header[4:6]
         msgType = header[2:4]
@@ -45,32 +50,42 @@ class SiFTClient():
         tail = s.recv(len - 16)
         if msgType == b'\x01\x10':
             command, args = self.commandHandler.decryptCommandMsg(header + tail)
+            originalHash = self.commandHandler.getHash(reqMsg)
+            if originalHash != args[0]:
+                s.close()
             #todo args[0] hash, kell vele vmit csinalni?
-            for a in args:
-                print(a)
             commandsToFail = ['pwd', 'lst', 'chd', 'mkd', 'del']
             commandsToReject = ['upl', 'dnl']
             if command in commandsToReject:
                 if args[1] == 'reject':
                     print("command " + command + " rejected: " + args[2] )
                     s.close()
-                elif args[1] == 'succes':
-                    self.printResult(command, args)
+                elif args[1] == 'success':
+                    self.printResult(command, *args)
 
-            elif command in commandsToFail and args[1] == "failure":
-                print("command " + command + " failed: " + args[2])
-                s.close()
+            elif command in commandsToFail:
+                if args[1] == 'reject':
+                    print("command " + command + " failed: " + args[2])
+                    s.close()
+                elif args[1] == 'success':
+                    print("success")
+                    self.printResult(command, *args)
             else:
                 s.close()
 
 
-    def printResult(self, command, args):
-        if command == ("pwd"):
-            print(args[3])
+    def printResult(self, command, *args):
+        if command == "pwd":
+            print(args[2])
         elif command == "lst":
-            encodedLst = args[3]
+            if len(args) < 3: #empty dir handling
+                print("")
+                return
+            encodedLst = args[2]
             decodedBytes = base64.b64decode(encodedLst.encode('utf-8'))
             print(decodedBytes.decode("utf-8"))
+        else:
+            print(command)
         #todo dnl is ir ki vmit?
 
     def pwd(self):

@@ -84,10 +84,12 @@ class SiFTServer:
             try:
                 lstResult = os.listdir()
                 lstStr = '\n'.join([str(item) for item in lstResult])
-                print(lstStr)
+                if not lstStr:#todo empty dir handling itt, ez még nem jó
+                    lstStr = ""
                 encodedStr = base64.b64encode(lstStr.encode('utf-8')).decode('utf-8')
                 response = commandHandler.encryptCommandRes(command, rawMSG, 'success', encodedStr)
                 conn.sendall(response)
+                print("Sending success")
             except OSError:
                 response = commandHandler.encryptCommandRes(command, rawMSG, 'failure', "OSError")
                 conn.sendall(response)
@@ -96,14 +98,29 @@ class SiFTServer:
             print("command request: chd")
             try:
                 os.chdir(args[0])
+                response = commandHandler.encryptCommandRes(command, rawMSG, 'success')
+                conn.sendall(response)
             except OSError:
                 response = commandHandler.encryptCommandRes(command, rawMSG, 'failure', "OSError occured")
                 conn.sendall(response)
-            response = commandHandler.encryptCommandRes(command, rawMSG, 'success')
-            conn.sendall(response)
 
+        #TODO root directory for user
         elif command == "mkd": # 1 args
             print("command request: mkd")
+            try:
+                if args[0].startswith('..') or args[0].startswith('\..') or args[0].startswith('/..'):# todo lehet contains jobb egyszerubb volna
+                    raise Exception('Nice try')
+                path = os.path.join(os.getcwd(), args[0])
+                #todo: path names may be supported by implementations, but this is not mandatory
+                #todo: Implementations should pay attantion to prevent creating a new directory
+                #outside of the root directory associated with the currently logged in user.
+                os.mkdir(path)
+                response = commandHandler.encryptCommandRes(command, rawMSG, 'success')
+                conn.sendall(response)
+            except OSError as error:
+                print(type(error))
+                response = commandHandler.encryptCommandRes(command, rawMSG, 'failure', error)
+                conn.sendall(response)
             #todo
         elif command == "del": # 1 args
             print("command request: del")

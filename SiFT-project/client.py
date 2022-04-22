@@ -1,5 +1,8 @@
 import socket
-from MTP import MTP, LoginProtocol, CommandsProtocol
+
+from protocols.commands import CommandsProtocol
+from protocols.login import LoginProtocol
+from protocols.mtp import MTP
 
 class SiFTClient():
 

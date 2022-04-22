@@ -1,12 +1,12 @@
 import socket
 import time
 import threading
-from MTP import MTP, LoginProtocol, CommandsProtocol
+
+from protocols.commands import CommandsProtocol
+from protocols.login import LoginProtocol
+from protocols.mtp import MTP
 from Crypto.PublicKey import RSA
 import os
-from Crypto.Hash import SHA256
-from Crypto.Cipher import PKCS1_OAEP
-
 
 class SiFTServer:
     def __init__(self, port=5150):

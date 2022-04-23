@@ -3,6 +3,8 @@ The SiFT v1.0 Download Protocol is responsible for executing an actual file down
 It must only be used by the server after sending an 'accept' response to a dnl command in the Commands Protocol,
 and it must only be used by the client after receiving an 'accept' response to a dnl command in the Commands Protocol.
 '''
+import sys
+import traceback
 
 
 class ServerDownloadProtocol:
@@ -15,55 +17,63 @@ class ServerDownloadProtocol:
         MTPdata_size = header[4:6]
         msgType = header[2:4]
         len = int.from_bytes(MTPdata_size, byteorder='big')
+        print("len: " + str(len))
         if (len == 0):
             exit(1) # TODO proper error handling
-        msg = s.recv(len - 16)
+        # if (len < 16):
+            # TODO what to do here (error handling needed, just as below)
+        tail = s.recv(len - 16)
         if msgType != b'\x03\x00':
             # TODO proper error handling (close connection or what to do?)
             raise ValueError("Wrong message type (should be 03 00): " + msgType)
 
+        msg = self.MTP.decryptAndVerify(header+tail)
+
         if msg == "Cancel".encode("utf-8"):
+            print("Received \'Cancel\' download request of download protocol from client")
             return False
         elif msg == "Ready".encode("utf-8"):
+            print("Received \'Ready\' download request of download protocol from client")
             return True
         else:
             # TODO proper error handling (close connection or what to do?)
-            raise ValueError("Bad download request (not Cancel or Ready): " + msg.decode("utf-8"))
-
-    def __read_in_chunks(self, file_object, chunk_size=1024):
-        """
-        Lazy function (generator) to read a file piece by piece.
-        Default chunk size: 1k.
-        Source: https://stackoverflow.com/questions/519633/lazy-method-for-reading-big-file-in-python
-        """
-        while True:
-            data = file_object.read(chunk_size)
-            if not data:
-                break
-            yield data
+            print(msg)
+            raise ValueError("Bad download request (not Cancel or Ready)")
 
     def __createAndEncryptChunk(self, f, isLast=False):
         if isLast:
-            dnloadres = self.MTP.encryptAndAuth(b'\x03\x11', f, len(f))
-        else: dnloadres = self.MTP.encryptAndAuth(b'\x03\x10', f, len(f))
+            dnloadres = self.MTP.encryptAndAuth(b'\x03\x11', f)
+        else: dnloadres = self.MTP.encryptAndAuth(b'\x03\x10', f)
         return dnloadres
 
     def __sendChunk(self, dnloadres, s):
         s.sendall(dnloadres)
 
     def __sendFileChunks(self, filename, s):
-        with open(filename) as f:
-            for chunk in self.__read_in_chunks(f):
-                if not next(self.__read_in_chunks(f)): # TODO check if this works
+        with open(filename, "rb") as f:
+            chunk = f.read(1024)
+            nextChunk = f.read(1024)
+
+            while True:
+                if not chunk:
+                    break
+                elif not nextChunk:  # TODO check if this works
                     dnloadres = self.__createAndEncryptChunk(chunk, isLast=True)
                 else:
                     dnloadres = self.__createAndEncryptChunk(chunk)
+                print("Sending next file chunk...")
                 self.__sendChunk(dnloadres, s)
+                chunk = nextChunk
+                nextChunk = f.read(1024)
 
-    def executeDownloadProtocol(self, filename, s):
-        # wait for download request
-        if not self.__waitForDownloadRequest(self, s):  # Cancel
-            return # TODO anything else to clean up here?
+    def executeDownloadProtocol(self, path, s):
+        try: # TODO this should be removed and proper error handling added
+            # wait for download request
+            if not self.__waitForDownloadRequest(s):  # Cancel
+                return # TODO anything else to clean up here?
 
-        # received Ready from client, let's send the file
-        fileChunks = self.__sendFileChunks(filename, s)
+            # received Ready from client, let's send the file
+            self.__sendFileChunks(path, s)
+        except Exception as e:
+            traceback.print_exception(*sys.exc_info())
+            print(e)

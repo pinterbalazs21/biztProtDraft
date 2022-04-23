@@ -1,12 +1,14 @@
+import hashlib
 import socket
 import threading
 
-from protocols.mtp import MTP
-from Crypto.PublicKey import RSA
 import os
 import base64
 
+from protocols.mtp import MTP
+from Crypto.PublicKey import RSA
 from protocols.server.commandsServer import ServerCommandsProtocol
+from protocols.server.downloadServer import ServerDownloadProtocol
 from protocols.server.loginServer import ServerLoginProtocol
 
 class SiFTServer:
@@ -16,10 +18,10 @@ class SiFTServer:
         #generating public and private key
         self.keypair = RSA.generate(2048)
         self.pubKey = self.keypair.public_key()
-        self.savePubKey(self.pubKey, "public.key")
+        self.__savePubKey(self.pubKey, "public.key")
         print("Server init")
 
-    def savePubKey(self, pubkey, pubkeyfile):
+    def __savePubKey(self, pubkey, pubkeyfile):
         with open(pubkeyfile, 'wb') as f:
             f.write(pubkey.export_key(format='PEM'))
 
@@ -39,6 +41,9 @@ class SiFTServer:
     def listen(self, conn, addr):
         msgHandler = MTP()
         loginHandler = ServerLoginProtocol(msgHandler)
+        commandHandler = ServerCommandsProtocol(msgHandler)
+        downloadHandler = ServerDownloadProtocol(msgHandler)
+        # TODO add upload handler when it exists
 
         with conn:
             print(f"Connected by {addr}")
@@ -47,7 +52,6 @@ class SiFTServer:
             loginHandler.acceptLoginRequest(conn, self.keypair)
 
             # waiting for message loop (commands protocol)
-            commandHandler = ServerCommandsProtocol(msgHandler)
             while True:
                 #todo
                 header = conn.recv(16)
@@ -58,9 +62,11 @@ class SiFTServer:
                     continue
                 tail = conn.recv(len - 16)
                 if msgType == b'\x01\x00':
-                    self.acceptCommandReq(commandHandler, conn, header + tail)
+                    self.__acceptCommandReq(commandHandler, downloadHandler, conn, header + tail)
 
-    def acceptCommandReq(self, commandHandler, conn, rawMSG):
+    # TODO shouldn't this be in the server command protocol?
+    # TODO and btw it is quite a spaghetti, it took a while to implement dnl in it
+    def __acceptCommandReq(self, commandHandler, downloadHandler, conn, rawMSG):
         """
         Decrypts and verifies request, if ok: execute command otherwise: connection close
         """
@@ -120,7 +126,8 @@ class SiFTServer:
                 response = commandHandler.encryptCommandRes(command, rawMSG, 'failure', str(error))
                 conn.sendall(response)
 
-        elif command == "del": # 1 args
+        # TODO HOW? Implementations should pay attention to prevent downloading/uploading/deleting a file from a directory outside of the root directory associated with the currently logged in user.
+        elif command == "del":  # 1 args
             print("command request: del")
             try:
                 path = os.path.join(os.getcwd(), args[0])
@@ -136,11 +143,41 @@ class SiFTServer:
                 response = commandHandler.encryptCommandRes(command, rawMSG, 'failure', str(error))
                 conn.sendall(response)
 
-        elif command == "upl": # 3 args
+        # TODO HOW? Implementations should pay attention to prevent downloading/uploading/deleting a file from a directory outside of the root directory associated with the currently logged in user.
+        elif command == "upl":  # 3 args
             print("command request: upl")
             #todo
-        elif command == "dnl": # 1 args
+        # TODO HOW? Implementations should pay attention to prevent downloading/uploading/deleting a file from a directory outside of the root directory associated with the currently logged in user.
+        elif command == "dnl":  # 1 args
             print("command request: dnl")
+            try:
+                path = os.path.join(os.getcwd(), args[0])
+                if not os.path.exists(path) or not os.path.isfile(path):
+                    raise Exception('File does not exist (or it is not a file): ' + path) # TODO any other reasons to reject req?
+
+                fileSize = os.path.getsize(path)
+                if(fileSize==0):
+                    raise Exception(
+                        'File is empty: ' + path)  # TODO any other reasons to reject req?
+
+                # Source of this hashing snippet: https://www.quickprogrammingtips.com/python/how-to-calculate-sha256-hash-of-a-file-in-python.html
+                sha256_hash = hashlib.sha256()
+                with open(path, "rb") as f:
+                    # Read and update hash string value in blocks of 4K
+                    for byte_block in iter(lambda: f.read(4096), b""):
+                        sha256_hash.update(byte_block)
+                    fileHash = sha256_hash.hexdigest()
+
+                response = commandHandler.encryptCommandRes(command, rawMSG, 'success', str(fileSize), fileHash)
+                conn.sendall(response)
+                downloadHandler.executeDownloadProtocol(path, conn)
+            except Exception as error:
+                if command == "dnl" or command == "upl":
+                    response = commandHandler.encryptCommandRes(command, rawMSG, 'reject', str(error))
+                else:
+                    response = commandHandler.encryptCommandRes(command, rawMSG, 'failure', str(error))
+
+                conn.sendall(response)
             #todo
 
 server = SiFTServer()

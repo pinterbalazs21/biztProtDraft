@@ -1,6 +1,7 @@
 import socket
 
 from protocols.client.commandsClient import ClientCommandsProtocol
+from protocols.client.downloadClient import ClientDownloadProtocol
 from protocols.client.loginClient import ClientLoginProtocol
 from protocols.mtp import MTP
 import base64
@@ -14,6 +15,7 @@ class SiFTClient():
         self.msgHandler = MTP()
         self.loginHandler = ClientLoginProtocol(self.msgHandler)
         self.commandHandler = ClientCommandsProtocol(self.msgHandler)
+        self.downloadHandler = ClientDownloadProtocol(self.msgHandler)
         print("init on port" + str(self.port))
 
     def connect(self):
@@ -23,24 +25,32 @@ class SiFTClient():
             # execute login protocol
             self.loginHandler.executeLogin(s)
 
-            # start commands protocol
+            # start commands protocol TODO shouldn't this loop be in the commands protocol?
             while True:
                 rawCommmand = input()
                 command = rawCommmand.split()[0]
                 commands = ['pwd', 'lst', 'chd', 'mkd', 'del', 'upl', 'dnl']
                 if command not in commands:
                     print("Please enter a valid command")
-                    #todo arg validation here?
+                    # todo arg validation here?
                     continue
                 args = ()
                 if len(command) > 1:
                     args = tuple(rawCommmand.split()[1:])
-                reqMsg = self.commandHandler.encryptCommandReq(command, *args)
-                print("reqMsg constructed")
-                s.sendall(reqMsg)
-                self.receiveCommandResponse(s, reqMsg)
+                if command == "dnl": # TODO refactor, put in command protocol, break into per command process
+                    filename = args[0]
+                    reqMsg = self.commandHandler.encryptCommandReq(command, *args)
+                    print("reqMsg constructed")
+                    s.sendall(reqMsg)
+                    self.__receiveDownloadCommandResponse(s, reqMsg, filename)
+                else:
+                    reqMsg = self.commandHandler.encryptCommandReq(command, *args)
+                    print("reqMsg constructed")
+                    s.sendall(reqMsg)
+                    self.__receiveCommandResponse(s, reqMsg)
 
-    def receiveCommandResponse(self, s, reqMsg):
+    # TODO shouldn't this be in the client command protocol?
+    def __receiveCommandResponse(self, s, reqMsg):
         header = s.recv(16)
         MTPdata_size = header[4:6]
         msgType = header[2:4]
@@ -56,24 +66,27 @@ class SiFTClient():
                 print("connection closed due to wrong hash")
                 exit(1)
             commandsToFail = ['pwd', 'lst', 'chd', 'mkd', 'del']
-            commandsToReject = ['upl', 'dnl']
-            if command in commandsToReject:
-                if args[1] == 'reject':
-                    print("command " + command + " rejected: " + args[2] )
-                elif args[1] == 'success':
-                    self.printResult(command, *args)
+            # commandsToReject = ['upl', 'dnl']
+            # if command in commandsToReject:
+            #     if args[1] == 'reject':
+            #         print("command " + command + " rejected: " + args[2])
+            #     elif args[1] == 'success':
+            #         if command == 'dnl':
+            #             self.downloadHandler.executeDownloadProtocol(, s) # TODO that's why the whole process of these command req-resps should be in the commandsprotcol, implemented per command - how do I get the filename HERE??
+            #         # elif command == 'upl': # TODO
+            #         else:
+            #             self.__printResult(command, *args)
 
-            elif command in commandsToFail:
+            if command in commandsToFail:
                 if args[1] == 'failure':
                     print("command " + command + " failed: " + args[2])
                 elif args[1] == 'success':
                     print("success")
-                    self.printResult(command, *args)
+                    self.__printResult(command, *args)
             else:
                 s.close()
 
-
-    def printResult(self, command, *args):
+    def __printResult(self, command, *args):
         if command == "pwd":
             print(args[2])
         elif command == "lst":
@@ -85,12 +98,40 @@ class SiFTClient():
             print(decodedBytes.decode("utf-8"))
         else:
             print(command)
-        #todo dnl is ir ki vmit?
+        # TODO dnl is ir ki vmit? - nem, szerintem nem, csak lementi a fájlt
+
+    # TODO shouldn't this be in the client command protocol?
+    def __receiveDownloadCommandResponse(self, s, reqMsg, filename):
+        header = s.recv(16)
+        MTPdata_size = header[4:6]
+        msgType = header[2:4]
+        len = int.from_bytes(MTPdata_size, byteorder='big')
+        if (len == 0):
+            exit(1)
+        tail = s.recv(len - 16)
+        if msgType == b'\x01\x10':
+            command, args = self.commandHandler.decryptCommandMsg(header + tail)
+            originalHash = self.commandHandler.getHash(reqMsg)
+            if originalHash != args[0]:
+                s.close()
+                print("connection closed due to wrong hash")
+                exit(1)
+            commandsToReject = ['upl', 'dnl']
+            if command in commandsToReject:
+                if args[1] == 'reject':
+                    print("command " + command + " rejected: " + args[2])
+                elif args[1] == 'success':
+                    if command == 'dnl':
+                        self.downloadHandler.executeDownloadProtocol(filename, s)
+                    # elif command == 'upl': # TODO
+            else:
+                s.close()
+
+# TODO will these methods below be used anywhere? If not, remove them please
 
     def pwd(self):
         #Print current working directory
         print("pwd")
-
 
     def lst(self):
         #List content of the current working directory

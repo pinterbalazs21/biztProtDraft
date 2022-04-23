@@ -27,16 +27,6 @@ class ClientLoginProtocol:
         print("Final key constructed:")
         print(self.MTP.finalKey)
 
-    def __encryptLoginRequest(self, loginReq):  # loginReq == payload
-        print("Encrypting login req")
-        tk = Random.get_random_bytes(32)
-        msgLen = 16 + len(loginReq) + 12 + 256  # length of header, (encrypted) payload, auth mac + ETK
-        msg = self.MTP.encryptAndAuth(b'\x00\x00', loginReq, msgLen, tk)
-        pubkey = self.__load_publickey()
-        RSAcipher = PKCS1_OAEP.new(pubkey)
-        etk = RSAcipher.encrypt(tk)
-        return msg + etk, tk
-
     def __saveHash(self, payload):
         h = SHA256.new()
         h.update(payload)
@@ -50,6 +40,16 @@ class ClientLoginProtocol:
         clientRandom = clientRandom.encode("utf-8")
 
         return loginPayload, clientRandom  # type: str
+
+    def __encryptLoginRequest(self, loginReq):  # loginReq == payload
+        print("Encrypting login req")
+        tk = Random.get_random_bytes(32)
+        msgLen = 16 + len(loginReq) + 12 + 256  # length of header, (encrypted) payload, auth mac + ETK
+        msg = self.MTP.encryptAndAuth(b'\x00\x00', loginReq, msgLen, tk)
+        pubkey = self.__load_publickey()
+        RSAcipher = PKCS1_OAEP.new(pubkey)
+        etk = RSAcipher.encrypt(tk)
+        return msg + etk, tk
 
     def __decryptLoginResponse(self, tk, msg):
         payload = self.MTP.decryptAndVerify(msg, tk)
@@ -65,13 +65,14 @@ class ClientLoginProtocol:
         pwd = input()
         return username, pwd
 
+    # TODO MTP part of message should be handled by mtp
     def __receiveConnectionConfirmation(self, s, client_random, tk):
         header = s.recv(16)
         MTPdata_size = header[4:6]
         msgType = header[2:4]
         len = int.from_bytes(MTPdata_size, byteorder='big')
         if (len == 0):
-            exit(1)
+            exit(1) # TODO proper error handling
         tail = s.recv(len - 16)
         if msgType == b'\x00\x10':
             payload = self.__decryptLoginResponse(tk, header + tail)

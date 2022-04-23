@@ -1,5 +1,6 @@
 from Crypto.Hash import SHA256
 
+# TODO break it into server and client part
 class CommandsProtocol:
     def __init__(self, MTP):
         self.MTP = MTP

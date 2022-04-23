@@ -25,7 +25,7 @@ class SiFTServer:
 
     def listenAll(self):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            # TODO this is here to prevent "Address already in use", not sure, but probably should be deleted when not debugging anymore
+            # TODO this is here to prevent "Address already in use" errors, not sure, but probably should be deleted when not debugging anymore
             s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
             s.bind((self.host, self.port))

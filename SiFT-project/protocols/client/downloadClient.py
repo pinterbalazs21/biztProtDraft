@@ -36,7 +36,7 @@ class ClientDownloadProtocol:
 
     # TODO where to save file?
     def __receiveAndSaveFile(self, filename, s):
-        # open file first in write mode (override file if it exists)
+        # open file first in write mode (overrides file if it exists!)
         with open(filename, 'wb') as f:
             typ, msg = self.__receiveNextFileChunk(s)
             f.write(msg)

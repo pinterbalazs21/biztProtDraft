@@ -1,7 +1,7 @@
 import socket
 
+from protocols.client.commandsClient import ClientCommandsProtocol
 from protocols.client.loginClient import ClientLoginProtocol
-from protocols.commands import CommandsProtocol
 from protocols.mtp import MTP
 import base64
 
@@ -13,7 +13,7 @@ class SiFTClient():
         self.key = ""
         self.msgHandler = MTP()
         self.loginHandler = ClientLoginProtocol(self.msgHandler)
-        self.commandHandler = CommandsProtocol(self.msgHandler)
+        self.commandHandler = ClientCommandsProtocol(self.msgHandler)
         print("init on port" + str(self.port))
 
     def connect(self):

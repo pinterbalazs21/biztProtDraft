@@ -1,12 +1,12 @@
 import socket
 import threading
 
-from protocols.commands import CommandsProtocol
 from protocols.mtp import MTP
 from Crypto.PublicKey import RSA
 import os
 import base64
 
+from protocols.server.commandsServer import ServerCommandsProtocol
 from protocols.server.loginServer import ServerLoginProtocol
 
 class SiFTServer:
@@ -47,7 +47,7 @@ class SiFTServer:
             loginHandler.acceptLoginRequest(conn, self.keypair)
 
             # waiting for message loop (commands protocol)
-            commandHandler = CommandsProtocol(msgHandler)
+            commandHandler = ServerCommandsProtocol(msgHandler)
             while True:
                 #todo
                 header = conn.recv(16)

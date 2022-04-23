@@ -4,7 +4,10 @@ from Crypto.Random import get_random_bytes
 
 userData = {
     "admin": "almakortezsemle",
-    "a":"a"
+    "a": "a",
+    "alice": "aaa",
+    "bob": "bbb",
+    "charlie": "ccc"
 }
 
 userdatafile = '../userdata.csv'

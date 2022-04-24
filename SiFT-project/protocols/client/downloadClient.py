@@ -14,7 +14,7 @@ class ClientDownloadProtocol:
             dnlRequest = "Cancel".encode("utf-8")
         else:
             dnlRequest = "Ready".encode("utf-8")
-        msg = self.MTP.encryptAndAuth(b'\x03\x00', dnlRequest, len(dnlRequest))
+        msg = self.MTP.encryptAndAuth(b'\x03\x00', dnlRequest)
         return msg
 
     def __cancelDownload(self, s):
@@ -22,17 +22,13 @@ class ClientDownloadProtocol:
         s.sendall(encryptedDownloadRequest)
 
     def __receiveNextFileChunk(self, s):
-        header = s.recv(16)
-        MTPdata_size = header[4:6]
+        header, msg = self.MTP.waitForMessage(s)
         msgType = header[2:4]
-        len = int.from_bytes(MTPdata_size, byteorder='big')
-        if len == 0:
-            exit(1)  # TODO proper error handling
-        msg = s.recv(len - 16)
-        if msgType != b'\x03\x10' or msgType != b'\x03\x11':
+        payload = self.MTP.decryptAndVerify(header + msg)
+        if msgType != b'\x03\x10' and msgType != b'\x03\x11':
             # TODO proper error handling (close connection or what to do?)
-            raise ValueError("Wrong message type (should be 03 10 or 03 10): " + msgType)
-        return msgType, msg
+            raise ValueError("Wrong message type (should be 03 10 or 03 10): ")
+        return msgType, payload
 
     # TODO where to save file?
     def __receiveAndSaveFile(self, filename, s):
@@ -48,15 +44,16 @@ class ClientDownloadProtocol:
                 f.write(msg)
 
     def executeDownloadProtocol(self, filename, s):
-        ans = "unknown"
-        while ans.lower() != "n" or ans.lower() != "y" or ans != "":
-            print("File is ready to be downloaded. Do you want to proceed? [Y/n]", end=" ")
-            ans = input()
-
-        if ans == "n":
-            self.__cancelDownload(s)
-            print("Download canceled.")
-            return
+        ans = "y"
+        #while ans.lower() != "n" or ans.lower() != "y" or ans != "":
+        #    print(ans)
+        #    print("File is ready to be downloaded. Do you want to proceed? [Y/n]", end=" ")
+        #    ans = input()
+#
+        #if ans == "n":
+        #    self.__cancelDownload(s)
+        #    print("Download canceled.")
+        #    return
 
         encryptedDownloadRequest = self.__createAndEncryptDownloadRequest()
         s.sendall(encryptedDownloadRequest)

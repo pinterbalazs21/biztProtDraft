@@ -11,24 +11,19 @@ class ServerDownloadProtocol:
 
     # TODO MTP part of message should be handled by mtp
     def __waitForDownloadRequest(self, s):
-        header = s.recv(16)
-        MTPdata_size = header[4:6]
+        header, tail = self.MTP.waitForMessage(s)
         msgType = header[2:4]
-        len = int.from_bytes(MTPdata_size, byteorder='big')
-        if (len == 0):
-            exit(1) # TODO proper error handling
-        msg = s.recv(len - 16)
         if msgType != b'\x03\x00':
             # TODO proper error handling (close connection or what to do?)
             raise ValueError("Wrong message type (should be 03 00): " + msgType)
-
-        if msg == "Cancel".encode("utf-8"):
+        msg = self.MTP.decryptAndVerify(header+tail)
+        if msg == b'Cancel':
             return False
-        elif msg == "Ready".encode("utf-8"):
+        elif msg == b'Ready':
             return True
         else:
             # TODO proper error handling (close connection or what to do?)
-            raise ValueError("Bad download request (not Cancel or Ready): " + msg.decode("utf-8"))
+            raise ValueError("Bad download request (not Cancel or Ready): " + str(msg))
 
     def __read_in_chunks(self, file_object, chunk_size=1024):
         """
@@ -43,9 +38,10 @@ class ServerDownloadProtocol:
             yield data
 
     def __createAndEncryptChunk(self, f, isLast=False):
+        binF = f.encode("utf-8")
         if isLast:
-            dnloadres = self.MTP.encryptAndAuth(b'\x03\x11', f, len(f))
-        else: dnloadres = self.MTP.encryptAndAuth(b'\x03\x10', f, len(f))
+            dnloadres = self.MTP.encryptAndAuth(b'\x03\x11', binF)
+        else: dnloadres = self.MTP.encryptAndAuth(b'\x03\x10', binF)
         return dnloadres
 
     def __sendChunk(self, dnloadres, s):
@@ -53,16 +49,19 @@ class ServerDownloadProtocol:
 
     def __sendFileChunks(self, filename, s):
         with open(filename) as f:
-            for chunk in self.__read_in_chunks(f):
-                if not next(self.__read_in_chunks(f)): # TODO check if this works
-                    dnloadres = self.__createAndEncryptChunk(chunk, isLast=True)
-                else:
+            while True:
+                try:
+                    chunk = next(self.__read_in_chunks(f)) # TODO ez az utolsot duplikálja, majd kiszedni
                     dnloadres = self.__createAndEncryptChunk(chunk)
-                self.__sendChunk(dnloadres, s)
+                    self.__sendChunk(dnloadres, s)
+                except StopIteration as e:
+                    dnloadres = self.__createAndEncryptChunk(chunk, isLast=True)
+                    self.__sendChunk(dnloadres, s)
+                    break
 
     def executeDownloadProtocol(self, filename, s):
         # wait for download request
-        if not self.__waitForDownloadRequest(self, s):  # Cancel
+        if not self.__waitForDownloadRequest(s):  # Cancel
             return # TODO anything else to clean up here?
 
         # received Ready from client, let's send the file

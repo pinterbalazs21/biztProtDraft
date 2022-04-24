@@ -8,7 +8,7 @@ import base64
 
 from protocols.server.commandsServer import ServerCommandsProtocol
 from protocols.server.loginServer import ServerLoginProtocol
-
+from protocols.server.downloadServer import ServerDownloadProtocol
 class SiFTServer:
     def __init__(self, port=5150):
         self.port = port
@@ -39,6 +39,8 @@ class SiFTServer:
     def listen(self, conn, addr):
         msgHandler = MTP()
         loginHandler = ServerLoginProtocol(msgHandler)
+        commandHandler = ServerCommandsProtocol(msgHandler)
+        downloadHandler = ServerDownloadProtocol(msgHandler)
 
         with conn:
             print(f"Connected by {addr}")
@@ -47,36 +49,26 @@ class SiFTServer:
             loginHandler.acceptLoginRequest(conn, self.keypair)
 
             # waiting for message loop (commands protocol)
-            commandHandler = ServerCommandsProtocol(msgHandler)
             while True:
-                #todo
-                header = conn.recv(16)
-                MTPdata_size = header[4:6]
-                msgType = header[2:4]
-                len = int.from_bytes(MTPdata_size, byteorder='big')
-                if (len == 0):
-                    continue
-                tail = conn.recv(len - 16)
-                if msgType == b'\x01\x00':
-                    self.acceptCommandReq(commandHandler, conn, header + tail)
+                #try:
+                command, args = commandHandler.acceptCommandReq(conn)
+                self.handleCommandReq(command, args, conn, commandHandler, downloadHandler)
+                #except Exception as e:
+                #    print("Connection closed, thread terminated")
+                #    return
 
-    def acceptCommandReq(self, commandHandler, conn, rawMSG):
+    def handleCommandReq(self, command, args, conn, commandHandler, downloadHandler):
         """
         Decrypts and verifies request, if ok: execute command otherwise: connection close
         """
-        command, args = commandHandler.decryptCommandMsg(rawMSG)
         # args tuple!
-        print(command)
         if command == "pwd": # 0 args
             print("command request: pwd")
             try:
                 wd = os.getcwd()
-                response = commandHandler.encryptCommandRes(command, rawMSG, 'success', wd)
-                conn.sendall(response)
+                commandHandler.encryptCommandRes(conn, command, 'success', wd)
             except OSError:
-                response = commandHandler.encryptCommandRes(command, rawMSG, 'failure')
-                conn.sendall(response)
-
+                commandHandler.encryptCommandRes(conn, command, 'failure')
         elif command == "lst": # 0 args
             print("command request: lst")
             try:
@@ -85,63 +77,84 @@ class SiFTServer:
                 if not lstStr:#todo empty dir handling itt, ez még nem jó
                     lstStr = ""
                 encodedStr = base64.b64encode(lstStr.encode('utf-8')).decode('utf-8')
-                response = commandHandler.encryptCommandRes(command, rawMSG, 'success', encodedStr)
-                conn.sendall(response)
+                commandHandler.encryptCommandRes(conn, command, 'success', encodedStr)
                 print("Sending success")
             except OSError:
-                response = commandHandler.encryptCommandRes(command, rawMSG, 'failure', "OSError")
-                conn.sendall(response)
+                commandHandler.encryptCommandRes(conn, command, 'failure', "OSError")
 
         elif command == "chd": # 1 args
             print("command request: chd")
             try:
                 os.chdir(args[0])
-                response = commandHandler.encryptCommandRes(command, rawMSG, 'success')
-                conn.sendall(response)
+                commandHandler.encryptCommandRes(conn, command, 'success')
             except OSError:
-                response = commandHandler.encryptCommandRes(command, rawMSG, 'failure', "OSError occured")
-                conn.sendall(response)
+                commandHandler.encryptCommandRes(conn, command, 'failure', "OSError occured")
 
-        #TODO root directory for user
-        elif command == "mkd": # 1 args
+        # TODO root directory for user
+        elif command == "mkd":  # 1 args
             print("command request: mkd")
             try:
-                if args[0].startswith('..') or args[0].startswith('\..') or args[0].startswith('/..'):# todo lehet contains jobb egyszerubb volna
-                    raise Exception('Nice try')
                 path = os.path.join(os.getcwd(), args[0])
-                #todo: path names may be supported by implementations, but this is not mandatory
-                #todo: Implementations should pay attantion to prevent creating a new directory
-                #outside of the root directory associated with the currently logged in user.
+                if not self.checkDir(os.getcwd(), path):  # todo assign root dir to user
+                    raise Exception("outside of the root directory")
                 os.mkdir(path)
-                response = commandHandler.encryptCommandRes(command, rawMSG, 'success')
-                conn.sendall(response)
-            except Exception as error:#todo OSError?
-                print(type(error))
-                response = commandHandler.encryptCommandRes(command, rawMSG, 'failure', str(error))
-                conn.sendall(response)
+                commandHandler.encryptCommandRes(conn, command, 'success')
+            except Exception as error:
+                commandHandler.encryptCommandRes(conn, command, 'failure', str(error))
 
-        elif command == "del": # 1 args
+        elif command == "del":  # 1 args
             print("command request: del")
             try:
                 path = os.path.join(os.getcwd(), args[0])
+                print(path)
+                if not self.checkDir(os.getcwd(), path):  # todo assign root dir to user
+                    raise Exception("outside of the root directory")
+
                 if os.path.exists(path) and os.path.isfile(path):
                     os.remove(path)
                 elif os.path.exists(path) and len(os.listdir(path)) == 0:
                     os.rmdir(path)
                 else:
                     raise Exception('File or folder does not exist (or not empty)')
-                response = commandHandler.encryptCommandRes(command, rawMSG, 'success')
-                conn.sendall(response)
+                commandHandler.encryptCommandRes(conn, command, 'success')
+                print("Success-_---------")
             except Exception as error:
-                response = commandHandler.encryptCommandRes(command, rawMSG, 'failure', str(error))
-                conn.sendall(response)
+                print("Exception" + str(error))
+                commandHandler.encryptCommandRes(conn, command, 'failure', str(error))
 
-        elif command == "upl": # 3 args
+        elif command == "upl":  # 3 args
             print("command request: upl")
-            #todo
-        elif command == "dnl": # 1 args
+            fileName = args[0]# todo check, if exists: error
+            size = int(args[1])
+            hash = args[2]
+
+        elif command == "dnl":  # 1 args
             print("command request: dnl")
-            #todo
+            #try:
+            fileName = args[0]
+            path = os.path.join(os.getcwd(), fileName)
+            print(path)
+            if os.path.isfile(path):
+                size = os.path.getsize(path)
+                print("file size = " + str(size))
+                file = open(path, "r").read().encode("utf-8")
+                print(type(file))
+                fileHash = commandHandler.getHash(file)
+                print("++++++++++++++++++++++++++++++++++")
+                commandHandler.encryptCommandRes(conn, command, 'accept', str(size), fileHash)
+                print("++++++++++++++++++++++++++++++++++")
+                downloadHandler.executeDownloadProtocol(path, conn)
+                print("++++++++++++++++++++++++++++++++++")
+            else:
+                raise Exception('File does not exist')
+            #except Exception as error:
+            #    commandHandler.encryptCommandRes(conn, command, 'failure', str(error))
+
+    def checkDir(self, root, target):
+        root = os.path.abspath(root)
+        target = os.path.abspath(target)
+        return os.path.commonpath([root]) == os.path.commonpath([root, target])
+
 
 server = SiFTServer()
 server.listenAll()

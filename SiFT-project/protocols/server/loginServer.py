@@ -104,42 +104,37 @@ class ServerLoginProtocol:
                 return False # TODO erre conn close lesz a reakció, szerintem itt inkább az kéne
                 # sys.exit(1)  # TODO itt nem kéne conn.close() kéne?
 
-    def acceptLoginRequest(self, conn, keypair):
-        header = conn.recv(16)  # header
-        MTPdata_size = header[4:6]
+    def acceptLoginRequest(self, s, keypair):
+        header, msg = self.MTP.waitForMessage(s)
         msgType = header[2:4]
-        len = int.from_bytes(MTPdata_size, byteorder='big')
-        if (len == 0):
-            return  # todo connection close?
-        tail = conn.recv(len - 16)  # msg_size - header size
         # login request
         if msgType == b'\x00\x00':  # python 3.10 tud már match-case-t (switch case helyett)
-            loginRequest, tk = self.__decryptLoginRequest(header + tail, keypair)
+            loginRequest, tk = self.__decryptLoginRequest(header + msg, keypair)
             # todo check if this is right:
             if not loginRequest:
                 print("No(t) request")
-                conn.close()
+                s.close()
                 return
 
             clientRandom, timeStampStr, username, pwd = self.__splitLoginRequest(loginRequest)
 
             if not self.__checkTimestamp(timeStampStr):
                 print("Wrong timestamp")
-                conn.close()
+                s.close()
                 return
             if not self.__checkUserData(username, pwd):  # TODO
                 print("Checking user data failed, closing connection")
-                conn.close()
+                s.close()
                 return
 
             # TODO maybe move this into a helper func
             response, salt, server_random = self.__encryptLoginResponse(loginRequest, tk)
             ikey = clientRandom + server_random
             self.__createFinalKey(ikey, salt)
-            conn.sendall(response)
+            s.sendall(response)
             print("Login response sent")
         else:
             # todo check if this is right:
             print("Wrong request type (not login request)")
-            conn.close()
+            s.close()
         return

@@ -22,18 +22,13 @@ class ClientDownloadProtocol:
         s.sendall(encryptedDownloadRequest)
 
     def __receiveNextFileChunk(self, s):
-        header = s.recv(16)
-        MTPdata_size = header[4:6]
+        header, msg = self.MTP.waitForMessage(s)
         msgType = header[2:4]
-        len = int.from_bytes(MTPdata_size, byteorder='big')
-        if len == 0:
-            exit(1)  # TODO proper error handling
-        tail = s.recv(len - 16)
+        payload = self.MTP.decryptAndVerify(header + msg)
         if msgType != b'\x03\x10' and msgType != b'\x03\x11':
             # TODO proper error handling (close connection or what to do?)
-            raise ValueError("Wrong message type (should be 0310 or 0311): " + msgType.hex())
-        msg = self.MTP.decryptAndVerify(header + tail)
-        return msgType, msg
+            raise ValueError("Wrong message type (should be 03 10 or 03 10): ")
+        return msgType, payload
 
     def __receiveAndSaveFile(self, filename, s):
         # open file first in write mode (overrides file if it exists!)

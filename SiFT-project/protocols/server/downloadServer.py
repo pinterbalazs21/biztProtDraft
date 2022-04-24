@@ -13,8 +13,7 @@ class ServerDownloadProtocol:
 
     # TODO MTP part of message should be handled by mtp
     def __waitForDownloadRequest(self, s):
-        header = s.recv(16)
-        MTPdata_size = header[4:6]
+        header, tail = self.MTP.waitForMessage(s)
         msgType = header[2:4]
         len = int.from_bytes(MTPdata_size, byteorder='big')
         print("len: " + str(len))
@@ -29,10 +28,10 @@ class ServerDownloadProtocol:
 
         msg = self.MTP.decryptAndVerify(header+tail)
 
-        if msg == "Cancel".encode("utf-8"):
+        if msg == b'Cancel':
             print("Received \'Cancel\' download request of download protocol from client")
             return False
-        elif msg == "Ready".encode("utf-8"):
+        elif msg == b'Ready':
             print("Received \'Ready\' download request of download protocol from client")
             return True
         else:
@@ -41,9 +40,11 @@ class ServerDownloadProtocol:
             raise ValueError("Bad download request (not Cancel or Ready)")
 
     def __createAndEncryptChunk(self, f, isLast=False):
+        binF = f.encode("utf-8")
         if isLast:
-            dnloadres = self.MTP.encryptAndAuth(b'\x03\x11', f)
-        else: dnloadres = self.MTP.encryptAndAuth(b'\x03\x10', f)
+            dnloadres = self.MTP.encryptAndAuth(b'\x03\x11', binF)
+        else: 
+            dnloadres = self.MTP.encryptAndAuth(b'\x03\x10', binF)
         return dnloadres
 
     def __sendChunk(self, dnloadres, s):

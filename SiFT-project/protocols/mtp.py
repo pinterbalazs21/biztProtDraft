@@ -36,14 +36,14 @@ class MTP:
             print("Warning: Message length value in header is wrong!")
             print("Processing is continued nevertheless...")
 
-        print("Expecting sequence number " + str(self.rcvsqn + 1) + " or larger...")
+        #print("Expecting sequence number " + str(self.rcvsqn + 1) + " or larger...")
         sndsqn = int.from_bytes(header_sqn, byteorder='big')
         if (sndsqn <= self.rcvsqn):
             print("Error: Message sequence number is too old!")
             print("Processing completed.")
             sys.exit(1)
         self.rcvsqn += 1
-        print("Sequence number verification is successful.")
+        #print("Sequence number verification is successful.")
         AE = AES.new(key, AES.MODE_GCM, nonce=nonce, mac_len=12)
         AE.update(header)
         try:
@@ -52,7 +52,7 @@ class MTP:
             print("Error: Operation failed!")
             print("Processing completed.")
             sys.exit(1)
-        print("Operation was successful: message is intact, content is decrypted.")
+        #print("Operation was successful: message is intact, content is decrypted.")
         return payload
 
     def encryptAndAuth(self, typ, payload, msg_length = 0, key = None):
@@ -76,3 +76,19 @@ class MTP:
         encrypted_payload, authtag = AE.encrypt_and_digest(payload)
         self.sqn += 1
         return header + encrypted_payload + authtag # msg
+
+    def waitForHeader(self, s):
+        header = s.recv(16)
+        MTPdata_size = header[4:6]
+        len = int.from_bytes(MTPdata_size, byteorder='big')
+        if (len == 0):
+            s.close()
+            print("len = 0, connection closed")
+            exit(1)  # TODO proper error handling
+        return header, len
+
+    def waitForMessage(self, s):
+        header, len = self.waitForHeader(s)
+        #msgType = header[2:4]
+        msg = s.recv(len - 16)
+        return header, msg#, msgType

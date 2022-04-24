@@ -47,9 +47,10 @@ class ServerLoginProtocol:
         return h.hexdigest()
 
     def __createFinalKey(self, ikey, salt):
-        self.MTP.finalKey = HKDF(ikey, 32, salt, SHA256)
         print("Final key constructed:")
-        print(self.MTP.finalKey)
+        key = HKDF(ikey, 32, salt, SHA256)
+        print(key) # TODO do we really want to print this when not debugging?
+        self.MTP.setFinalKey(key)
 
     def __splitLoginRequest(self, loginRequest):
         data = loginRequest.decode("utf-8").splitlines()

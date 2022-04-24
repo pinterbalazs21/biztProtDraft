@@ -1,6 +1,7 @@
 import socket
 
 from protocols.client.commandsClient import ClientCommandsProtocol
+from protocols.client.downloadClient import ClientDownloadProtocol
 from protocols.client.loginClient import ClientLoginProtocol
 from protocols.client.downloadClient import ClientDownloadProtocol
 from protocols.mtp import MTP
@@ -25,7 +26,7 @@ class SiFTClient():
             # execute login protocol
             self.loginHandler.executeLogin(s)
 
-            # start commands protocol
+            # start commands protocol TODO shouldn't this loop be in the commands protocol?
             while True:
                 rawCommmand = input()
                 command = rawCommmand.split()[0]

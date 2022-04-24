@@ -1,12 +1,14 @@
+import hashlib
 import socket
 import threading
 
-from protocols.mtp import MTP
-from Crypto.PublicKey import RSA
 import os
 import base64
 
+from protocols.mtp import MTP
+from Crypto.PublicKey import RSA
 from protocols.server.commandsServer import ServerCommandsProtocol
+from protocols.server.downloadServer import ServerDownloadProtocol
 from protocols.server.loginServer import ServerLoginProtocol
 from protocols.server.downloadServer import ServerDownloadProtocol
 class SiFTServer:
@@ -16,10 +18,10 @@ class SiFTServer:
         #generating public and private key
         self.keypair = RSA.generate(2048)
         self.pubKey = self.keypair.public_key()
-        self.savePubKey(self.pubKey, "public.key")
+        self.__savePubKey(self.pubKey, "public.key")
         print("Server init")
 
-    def savePubKey(self, pubkey, pubkeyfile):
+    def __savePubKey(self, pubkey, pubkeyfile):
         with open(pubkeyfile, 'wb') as f:
             f.write(pubkey.export_key(format='PEM'))
 
@@ -41,6 +43,7 @@ class SiFTServer:
         loginHandler = ServerLoginProtocol(msgHandler)
         commandHandler = ServerCommandsProtocol(msgHandler)
         downloadHandler = ServerDownloadProtocol(msgHandler)
+        # TODO add upload handler when it exists
 
         with conn:
             print(f"Connected by {addr}")
@@ -52,12 +55,12 @@ class SiFTServer:
             while True:
                 #try:
                 command, args = commandHandler.acceptCommandReq(conn)
-                self.handleCommandReq(command, args, conn, commandHandler, downloadHandler)
+                self.__handleCommandReq(command, args, conn, commandHandler, downloadHandler)
                 #except Exception as e:
                 #    print("Connection closed, thread terminated")
                 #    return
 
-    def handleCommandReq(self, command, args, conn, commandHandler, downloadHandler):
+    def __handleCommandReq(self, command, args, conn, commandHandler, downloadHandler):
         """
         Decrypts and verifies request, if ok: execute command otherwise: connection close
         """
@@ -146,7 +149,7 @@ class SiFTServer:
                 downloadHandler.executeDownloadProtocol(path, conn)
                 print("++++++++++++++++++++++++++++++++++")
             else:
-                raise Exception('File does not exist')
+                raise Exception('File does not exist') # TODO itt kéne reject-t küldeni, üres fájl esetén szintén
             #except Exception as error:
             #    commandHandler.encryptCommandRes(conn, command, 'failure', str(error))
 
@@ -154,7 +157,6 @@ class SiFTServer:
         root = os.path.abspath(root)
         target = os.path.abspath(target)
         return os.path.commonpath([root]) == os.path.commonpath([root, target])
-
 
 server = SiFTServer()
 server.listenAll()

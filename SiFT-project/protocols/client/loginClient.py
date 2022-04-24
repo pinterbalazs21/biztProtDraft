@@ -23,9 +23,10 @@ class ClientLoginProtocol:
             sys.exit(1)
 
     def __createFinalKey(self, ikey, salt):
-        self.MTP.finalKey = HKDF(ikey, 32, salt, SHA256)
         print("Final key constructed:")
-        print(self.MTP.finalKey)
+        key = HKDF(ikey, 32, salt, SHA256)
+        print(key) # TODO do we really want to print this when not debugging? (with other words: delete this line later)
+        self.MTP.setFinalKey(key)
 
     def __saveHash(self, payload):
         h = SHA256.new()

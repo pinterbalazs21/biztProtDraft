@@ -51,7 +51,7 @@ class MTP:
         except Exception as e:
             print("Error: Operation failed!")
             print("Processing completed.")
-            sys.exit(1)
+            sys.exit(1) #todo el kell kapni egyáltalán?
         #print("Operation was successful: message is intact, content is decrypted.")
         return payload
 
@@ -69,7 +69,7 @@ class MTP:
         # TODO and on the other hand, why is there a parameter called msg_length, when should I even use that, if this part calculates the msg length for me? shouldn't THAT case be handled as the separated special case?
         if msg_length == 0:
             msg_length = 12 + len(payload) + 16
-        header = self.createHeader(typ, msg_length)#todo sqn MTPselfben tárolni vagy máshol?
+        header = self.createHeader(typ, msg_length)
         nonce = header[6:14] #sqn:[6:8], rnd = [8:14]
         AE = AES.new(key, AES.MODE_GCM, nonce=nonce, mac_len=12)
         AE.update(header)
@@ -84,7 +84,7 @@ class MTP:
         if (len == 0):
             s.close()
             print("len = 0, connection closed")
-            exit(1)  # TODO proper error handling
+            raise ValueError("0 Length")
         return header, len
 
     def waitForMessage(self, s):

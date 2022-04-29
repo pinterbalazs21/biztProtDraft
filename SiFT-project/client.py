@@ -30,7 +30,7 @@ class SiFTClient():
             while True:
                 rawCommmand = input()
                 command = rawCommmand.split()[0]
-                commands = ['pwd', 'lst', 'chd', 'mkd', 'del', 'upl', 'dnl']
+                #commands = ['pwd', 'lst', 'chd', 'mkd', 'del', 'upl', 'dnl']
                 if command == 'pwd' and len(rawCommmand.split()) == 1:
                     self.commandHandler.sendPWDReq(s)
                     self.commandHandler.waitForCommandResponse(s)
@@ -52,8 +52,8 @@ class SiFTClient():
                 elif command == 'dnl' and len(rawCommmand.split()) == 2:
                     fileName = rawCommmand.split()[1]
                     self.commandHandler.sendDNLReq(s, fileName)
-                    self.commandHandler.waitForCommandResponse(s)
-                    self.downloadHandler.executeDownloadProtocol(fileName, s)
+                    if self.commandHandler.waitForCommandResponse(s):
+                        self.downloadHandler.executeDownloadProtocol(fileName, s)
                 else:
                     print("Please enter a valid command")
                     continue

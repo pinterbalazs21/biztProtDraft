@@ -9,7 +9,6 @@ class ClientCommandsProtocol:
     # creates command request body
     # type can be: 'pwd', 'lst', 'chd', 'mkd', 'del', 'upl', 'dnl'
     def __createCommandReq(self, type, *args):
-        #todo type check or different function for each command
         request = type
         if args:  # has at least 1 param
             for parameter in args:
@@ -18,9 +17,6 @@ class ClientCommandsProtocol:
 
     def __encryptCommandReq(self, commandType, *args):
         payload = self.__createCommandReq(commandType, *args)
-        print("payload length: ")
-        print(payload)
-        print(len(payload))
         return self.MTP.encryptAndAuth(b'\x01\x00', payload)
 
     def __saveHash(self, msg):
@@ -89,16 +85,21 @@ class ClientCommandsProtocol:
         if command in commandsToReject:
             if args[1] == 'reject':
                 print("command " + command + " rejected: " + args[2] )
-            elif args[1] == 'success':
+                return False
+            elif args[1] == 'accept':
                 self.__printResult(command, *args)
+                return True
 
         elif command in commandsToFail:
             if args[1] == 'failure':
                 print("command " + command + " failed: " + args[2])
+                return False
             elif args[1] == 'success':
                 self.__printResult(command, *args)
+                return True
         else:
             s.close()
+            return False
 
     def __printResult(self, command, *args):
         if command == "pwd":
@@ -110,4 +111,3 @@ class ClientCommandsProtocol:
             encodedLst = args[2]
             decodedBytes = base64.b64decode(encodedLst.encode('utf-8'))
             print(decodedBytes.decode("utf-8"))
-        # todo dnl is ir ki vmit?

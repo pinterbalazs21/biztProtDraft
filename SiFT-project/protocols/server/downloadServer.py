@@ -11,23 +11,14 @@ class ServerDownloadProtocol:
     def __init__(self, MTP):
         self.MTP = MTP
 
-    # TODO MTP part of message should be handled by mtp
     def __waitForDownloadRequest(self, s):
         header, tail = self.MTP.waitForMessage(s)
         msgType = header[2:4]
-        len = int.from_bytes(MTPdata_size, byteorder='big')
-        print("len: " + str(len))
-        if (len == 0):
-            exit(1) # TODO proper error handling
-        # if (len < 16):
-            # TODO what to do here (error handling needed, just as below)
-        tail = s.recv(len - 16)
         if msgType != b'\x03\x00':
-            # TODO proper error handling (close connection or what to do?)
+            s.close()
+            print("Connection closed!")
             raise ValueError("Wrong message type (should be 03 00): " + msgType)
-
         msg = self.MTP.decryptAndVerify(header+tail)
-
         if msg == b'Cancel':
             print("Received \'Cancel\' download request of download protocol from client")
             return False
@@ -35,16 +26,15 @@ class ServerDownloadProtocol:
             print("Received \'Ready\' download request of download protocol from client")
             return True
         else:
-            # TODO proper error handling (close connection or what to do?)
-            print(msg)
+            s.close()
+            print("Connection closed!")
             raise ValueError("Bad download request (not Cancel or Ready)")
 
     def __createAndEncryptChunk(self, f, isLast=False):
-        binF = f.encode("utf-8")
         if isLast:
-            dnloadres = self.MTP.encryptAndAuth(b'\x03\x11', binF)
+            dnloadres = self.MTP.encryptAndAuth(b'\x03\x11', f)
         else: 
-            dnloadres = self.MTP.encryptAndAuth(b'\x03\x10', binF)
+            dnloadres = self.MTP.encryptAndAuth(b'\x03\x10', f)
         return dnloadres
 
     def __sendChunk(self, dnloadres, s):
@@ -58,7 +48,7 @@ class ServerDownloadProtocol:
             while True:
                 if not chunk:
                     break
-                elif not nextChunk:  # TODO check if this works
+                elif not nextChunk:
                     dnloadres = self.__createAndEncryptChunk(chunk, isLast=True)
                 else:
                     dnloadres = self.__createAndEncryptChunk(chunk)

@@ -42,3 +42,5 @@ class ServerCommandsProtocol:
         self.latestHash = self.getHash(rawMSG)
         command, args = self.decryptCommandMsg(rawMSG)
         return command, args
+
+    #def handleCommandReq(self, s, downloadHandler):

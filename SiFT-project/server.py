@@ -70,28 +70,28 @@ class SiFTServer:
             try:
                 wd = os.getcwd()
                 commandHandler.encryptCommandRes(conn, command, 'success', wd)
-            except OSError:
-                commandHandler.encryptCommandRes(conn, command, 'failure')
+            except Exception as error:
+                commandHandler.encryptCommandRes(conn, command, 'failure', str(error))
         elif command == "lst": # 0 args
             print("command request: lst")
             try:
                 lstResult = os.listdir()
                 lstStr = '\n'.join([str(item) for item in lstResult])
-                if not lstStr:#todo empty dir handling itt, ez még nem jó
+                if not lstStr:#empty dir handling
                     lstStr = ""
                 encodedStr = base64.b64encode(lstStr.encode('utf-8')).decode('utf-8')
                 commandHandler.encryptCommandRes(conn, command, 'success', encodedStr)
                 print("Sending success")
-            except OSError:
-                commandHandler.encryptCommandRes(conn, command, 'failure', "OSError")
+            except Exception as error:
+                commandHandler.encryptCommandRes(conn, command, 'failure', str(error))
 
         elif command == "chd": # 1 args
             print("command request: chd")
             try:
                 os.chdir(args[0])
                 commandHandler.encryptCommandRes(conn, command, 'success')
-            except OSError:
-                commandHandler.encryptCommandRes(conn, command, 'failure', "OSError occured")
+            except Exception as error:
+                commandHandler.encryptCommandRes(conn, command, 'failure', str(error))
 
         # TODO root directory for user
         elif command == "mkd":  # 1 args
@@ -133,25 +133,24 @@ class SiFTServer:
 
         elif command == "dnl":  # 1 args
             print("command request: dnl")
-            #try:
-            fileName = args[0]
-            path = os.path.join(os.getcwd(), fileName)
-            print(path)
-            if os.path.isfile(path):
-                size = os.path.getsize(path)
-                print("file size = " + str(size))
-                file = open(path, "r").read().encode("utf-8")
-                print(type(file))
-                fileHash = commandHandler.getHash(file)
-                print("++++++++++++++++++++++++++++++++++")
-                commandHandler.encryptCommandRes(conn, command, 'accept', str(size), fileHash)
-                print("++++++++++++++++++++++++++++++++++")
-                downloadHandler.executeDownloadProtocol(path, conn)
-                print("++++++++++++++++++++++++++++++++++")
-            else:
-                raise Exception('File does not exist') # TODO itt kéne reject-t küldeni, üres fájl esetén szintén
-            #except Exception as error:
-            #    commandHandler.encryptCommandRes(conn, command, 'failure', str(error))
+            try:
+                fileName = args[0]
+                path = os.path.join(os.getcwd(), fileName)
+                print(path)
+                if os.path.exists(path) and os.path.isfile(path):
+                    size = os.path.getsize(path)
+                    print("file size = " + str(size))
+                    if size == 0:
+                        raise Exception('File is empty')
+                    file = open(path, "r").read().encode("utf-8")
+                    fileHash = commandHandler.getHash(file)
+                    commandHandler.encryptCommandRes(conn, command, 'accept', str(size), fileHash)
+                    downloadHandler.executeDownloadProtocol(path, conn)
+                else:
+                    print("Exception, file does not exist")
+                    raise Exception('File does not exist')
+            except Exception as error:
+                commandHandler.encryptCommandRes(conn, command, 'reject', str(error))
 
     def checkDir(self, root, target):
         root = os.path.abspath(root)

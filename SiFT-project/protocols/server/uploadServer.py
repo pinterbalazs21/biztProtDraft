@@ -5,7 +5,7 @@ and it must only be used by the client after receiving an 'accept' response to a
 '''
 import os.path
 
-from protocols.common.utils import getHash
+from protocols.common.utils import getHash, getFileInfo
 
 
 class ServerUploadProtocol:
@@ -37,9 +37,7 @@ class ServerUploadProtocol:
         print("File downloaded successfully")
 
     def __createAndEncryptUploadResponse(self, filename, s):
-        fileSize = os.path.getsize(filename)
-        file = open(filename, "r").read().encode("utf-8")
-        fileHash = getHash(file)
+        fileHash, fileSize = getFileInfo(filename)
         resPayload = str(fileHash + '\n' + fileSize)
 
         msg = self.MTP.encryptAndAuth(b'\x02\x10', resPayload)

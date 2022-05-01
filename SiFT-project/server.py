@@ -5,7 +5,7 @@ import threading
 import os
 import base64
 
-from protocols.common.utils import getHash
+from protocols.common.utils import getHash, getFileInfo
 from protocols.mtp import MTP
 from Crypto.PublicKey import RSA
 from protocols.server.commandsServer import ServerCommandsProtocol
@@ -153,13 +153,10 @@ class SiFTServer:
                 print(path)
                 print("File will be downloaded from: ", path)
                 if os.path.exists(path) and os.path.isfile(path):
-                    size = os.path.getsize(path)
+                    fileHash, size = getFileInfo(path)
                     print("file size = " + str(size))
                     if size == 0:
                         raise Exception('File is empty')
-
-                    file = open(path, "r").read().encode("utf-8")
-                    fileHash = getHash(file)
 
                     commandHandler.encryptCommandRes(conn, command, 'accept', str(size), fileHash)
                     downloadHandler.executeDownloadProtocol(path, conn)

@@ -7,7 +7,7 @@ import os.path
 import sys
 import traceback
 
-from protocols.common.utils import getHash
+from protocols.common.utils import getHash, getFileInfo
 
 
 class ClientUploadProtocol:
@@ -28,8 +28,7 @@ class ClientUploadProtocol:
         receivedFileSize = msgPayload[1]
 
         file = open(filename, "r").read().encode("utf-8")
-        localFileHash = getHash(file)
-        localFileSize = os.path.getsize(filename)
+        localFileHash, localFileSize = getFileInfo(file)
 
         if localFileHash != receivedFileHash:
             raise ValueError("File hash of uploaded file and local file are different! Closing connection.") # TODO close connection

@@ -7,6 +7,9 @@ from Crypto import Random
 from Crypto.Protocol.KDF import HKDF
 from Crypto.Protocol.KDF import scrypt
 
+from protocols.common.utils import getHash
+
+
 class ServerLoginProtocol:
     def __init__(self, MTP):
         self.loginHash = ''
@@ -27,7 +30,7 @@ class ServerLoginProtocol:
 
     def __createLoginResponse(self, receivedPayloadStr):
         rand = Random.get_random_bytes(16).hex()
-        strResponse = self.__getHash(receivedPayloadStr) + '\n' + rand  # type: str
+        strResponse = getHash(receivedPayloadStr) + '\n' + rand  # type: str
         return strResponse.encode("utf-8")  # request hash + random bytes,
 
     def __decryptLoginRequest(self, rawMSG, keypair):
@@ -40,11 +43,6 @@ class ServerLoginProtocol:
         msg = rawMSG[:-256]
         loginReq = self.MTP.decryptAndVerify(msg, tk)
         return loginReq, tk
-
-    def __getHash(self, payload):
-        h = SHA256.new()
-        h.update(payload)
-        return h.hexdigest()
 
     def __createFinalKey(self, ikey, salt):
         print("Final key constructed:")

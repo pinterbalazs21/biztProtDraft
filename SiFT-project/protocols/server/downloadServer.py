@@ -6,7 +6,6 @@ and it must only be used by the client after receiving an 'accept' response to a
 import sys
 import traceback
 
-
 class ServerDownloadProtocol:
     def __init__(self, MTP):
         self.MTP = MTP

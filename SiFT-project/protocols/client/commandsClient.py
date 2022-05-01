@@ -84,7 +84,7 @@ class ClientCommandsProtocol:
         commandsToReject = ['upl', 'dnl']
         if command in commandsToReject:
             if args[1] == 'reject':
-                print("command " + command + " rejected: " + args[2] )
+                print("command " + command + " rejected: " + args[2])
                 return False
             elif args[1] == 'accept':
                 self.__printResult(command, *args)
@@ -111,3 +111,8 @@ class ClientCommandsProtocol:
             encodedLst = args[2]
             decodedBytes = base64.b64decode(encodedLst.encode('utf-8'))
             print(decodedBytes.decode("utf-8"))
+        elif command == "dnl":
+            filesize = args[2]
+            filehash = args[3]
+            print("Hash of the file to be downloaded is: ", filehash)
+            print("Size of the file to be downloaded is: ", filesize)

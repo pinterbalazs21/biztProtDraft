@@ -5,12 +5,16 @@ import threading
 import os
 import base64
 
+from protocols.common.utils import getHash
 from protocols.mtp import MTP
 from Crypto.PublicKey import RSA
 from protocols.server.commandsServer import ServerCommandsProtocol
 from protocols.server.downloadServer import ServerDownloadProtocol
 from protocols.server.loginServer import ServerLoginProtocol
 from protocols.server.downloadServer import ServerDownloadProtocol
+from protocols.server.uploadServer import ServerUploadProtocol
+
+
 class SiFTServer:
     def __init__(self, port=5150):
         self.port = port
@@ -43,7 +47,7 @@ class SiFTServer:
         loginHandler = ServerLoginProtocol(msgHandler)
         commandHandler = ServerCommandsProtocol(msgHandler)
         downloadHandler = ServerDownloadProtocol(msgHandler)
-        # TODO add upload handler when it exists
+        uploadHandler = ServerUploadProtocol(msgHandler)
 
         with conn:
             print(f"Connected by {addr}")
@@ -55,12 +59,12 @@ class SiFTServer:
             while True:
                 #try:
                 command, args = commandHandler.acceptCommandReq(conn)
-                self.__handleCommandReq(command, args, conn, commandHandler, downloadHandler)
+                self.__handleCommandReq(command, args, conn, commandHandler, downloadHandler, uploadHandler)
                 #except Exception as e:
                 #    print("Connection closed, thread terminated")
                 #    return
 
-    def __handleCommandReq(self, command, args, conn, commandHandler, downloadHandler):
+    def __handleCommandReq(self, command, args, conn, commandHandler, downloadHandler, uploadHandler):
         """
         Decrypts and verifies request, if ok: execute command otherwise: connection close
         """
@@ -98,8 +102,8 @@ class SiFTServer:
             print("command request: mkd")
             try:
                 path = os.path.join(os.getcwd(), args[0])
-                if not self.checkDir(os.getcwd(), path):  # todo assign root dir to user
-                    raise Exception("outside of the root directory")
+                if not self.__checkDir(os.getcwd(), path):  # todo assign root dir to user
+                    raise Exception('File is outside root directory of user, access denied')
                 os.mkdir(path)
                 commandHandler.encryptCommandRes(conn, command, 'success')
             except Exception as error:
@@ -110,8 +114,8 @@ class SiFTServer:
             try:
                 path = os.path.join(os.getcwd(), args[0])
                 print(path)
-                if not self.checkDir(os.getcwd(), path):  # todo assign root dir to user
-                    raise Exception("outside of the root directory")
+                if not self.__checkDir(os.getcwd(), path):  # todo assign root dir to user
+                    raise Exception('File is outside root directory of user, access denied')
 
                 if os.path.exists(path) and os.path.isfile(path):
                     os.remove(path)
@@ -131,19 +135,32 @@ class SiFTServer:
             size = int(args[1])
             hash = args[2]
 
+            if not self.__checkDir(os.getcwd(), args[0]):
+                raise Exception('File is outside root directory of user, access denied')
+            path = os.path.join(os.getcwd(), args[0])
+            print("File will be uploaded to: ", path)
+
+            commandHandler.encryptCommandRes(conn, command, 'accept')
+            uploadHandler.executeUploadProtocol(path, size, hash, conn)
+
         elif command == "dnl":  # 1 args
             print("command request: dnl")
             try:
                 fileName = args[0]
+                if not self.__checkDir(os.getcwd(), args[0]):
+                    raise Exception('File is outside root directory of user, access denied')
                 path = os.path.join(os.getcwd(), fileName)
                 print(path)
+                print("File will be downloaded from: ", path)
                 if os.path.exists(path) and os.path.isfile(path):
                     size = os.path.getsize(path)
                     print("file size = " + str(size))
                     if size == 0:
                         raise Exception('File is empty')
+
                     file = open(path, "r").read().encode("utf-8")
-                    fileHash = commandHandler.getHash(file)
+                    fileHash = getHash(file)
+
                     commandHandler.encryptCommandRes(conn, command, 'accept', str(size), fileHash)
                     downloadHandler.executeDownloadProtocol(path, conn)
                 else:
@@ -152,7 +169,7 @@ class SiFTServer:
             except Exception as error:
                 commandHandler.encryptCommandRes(conn, command, 'reject', str(error))
 
-    def checkDir(self, root, target):
+    def __checkDir(self, root, target):
         root = os.path.abspath(root)
         target = os.path.abspath(target)
         return os.path.commonpath([root]) == os.path.commonpath([root, target])

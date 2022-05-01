@@ -5,20 +5,9 @@ and it must only be used by the client after receiving an 'accept' response to a
 '''
 import os.path
 
-from protocols.common.utils import getHash
-
-
-class ClientDownloadProtocol:
+class ServerUploadProtocol:
     def __init__(self, MTP):
         self.MTP = MTP
-
-    def __createAndEncryptDownloadRequest(self, cancel=False):
-        if (cancel):
-            dnlRequest = "Cancel".encode("utf-8")
-        else:
-            dnlRequest = "Ready".encode("utf-8")
-        msg = self.MTP.encryptAndAuth(b'\x03\x00', dnlRequest)
-        return msg
 
     def __cancelDownload(self, s):
         encryptedDownloadRequest = self.__createAndEncryptDownloadRequest(cancel=True)
@@ -33,7 +22,7 @@ class ClientDownloadProtocol:
             raise ValueError("Wrong message type (should be 03 10 or 03 10): ")
         return msgType, payload
 
-    def __receiveAndSaveFile(self, filename, filehash, s):
+    def __receiveAndSaveFile(self, filename, s):
         # open file first in write mode (overrides file if it exists!)
         with open(filename, 'wb') as f:
             print("Saving next file chunk...")
@@ -46,29 +35,9 @@ class ClientDownloadProtocol:
                 print("Saving next file chunk...")
                 typ, msg = self.__receiveNextFileChunk(s)
                 f.write(msg)
-        print("File downloaded successfully, checking hash...")
+        print("File downloaded successfully")
 
-        file = open(filename, "r").read().encode("utf-8")
-        fileHash = getHash(file)
-        file.close()
-
-        # TODO check hash
-
-
-    def executeDownloadProtocol(self, filename, filehash, s):
-        # file has to be saved into the current working directory, so path is removed here
-        filename = os.path.basename(filename)
-
-        ans = "unknown"
-        while ans.lower() != "n" and ans.lower() != "y" and ans != "":
-            print("File is ready to be downloaded. Do you want to proceed? [Y/n]", end=" ")
-            ans = input().strip("\n")
-
-        if ans == "n":
-            self.__cancelDownload(s)
-            print("Download canceled.")
-            return
-
-        encryptedDownloadRequest = self.__createAndEncryptDownloadRequest()
-        s.sendall(encryptedDownloadRequest)
+    def executeUploadProtocol(self, filename, s):
+        if os.path.exists(filename):
+            print("File to be uploaded will override already existing file.")
         self.__receiveAndSaveFile(filename, s)

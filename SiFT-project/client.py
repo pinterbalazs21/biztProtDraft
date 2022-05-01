@@ -4,6 +4,7 @@ from protocols.client.commandsClient import ClientCommandsProtocol
 from protocols.client.downloadClient import ClientDownloadProtocol
 from protocols.client.loginClient import ClientLoginProtocol
 from protocols.client.downloadClient import ClientDownloadProtocol
+from protocols.client.uploadClient import ClientUploadProtocol
 from protocols.mtp import MTP
 import base64
 
@@ -17,6 +18,7 @@ class SiFTClient():
         self.loginHandler = ClientLoginProtocol(self.msgHandler)
         self.commandHandler = ClientCommandsProtocol(self.msgHandler)
         self.downloadHandler = ClientDownloadProtocol(self.msgHandler)
+        self.uploadHandler = ClientUploadProtocol(self.msgHandler)
         print("init on port" + str(self.port))
 
     def connect(self):
@@ -48,7 +50,8 @@ class SiFTClient():
                     self.commandHandler.waitForCommandResponse(s)
                 elif command == 'upl' and len(rawCommmand.split()) == 2:
                     self.commandHandler.sendUPLReq(s, rawCommmand.split()[1])
-                    self.commandHandler.waitForCommandResponse(s)
+                    if self.commandHandler.waitForCommandResponse(s):
+                        self.uploadHandler.executeUploadProtocol(fileName, s)
                 elif command == 'dnl' and len(rawCommmand.split()) == 2:
                     fileName = rawCommmand.split()[1]
                     self.commandHandler.sendDNLReq(s, fileName)

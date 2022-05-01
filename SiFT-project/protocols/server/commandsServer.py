@@ -1,13 +1,11 @@
 from Crypto.Hash import SHA256
 
+from protocols.common.utils import getHash
+
+
 class ServerCommandsProtocol:
     def __init__(self, MTP):
         self.MTP = MTP
-
-    def getHash(self, payload):
-        h = SHA256.new()
-        h.update(payload)
-        return h.hexdigest()
 
     # creates command response body
     def __createCommandRes(self, type, *args):
@@ -39,7 +37,7 @@ class ServerCommandsProtocol:
             s.close()
             return
         rawMSG = header + msg
-        self.latestHash = self.getHash(rawMSG)
+        self.latestHash = getHash(rawMSG)
         command, args = self.decryptCommandMsg(rawMSG)
         return command, args
 

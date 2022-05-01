@@ -33,7 +33,7 @@ class ClientDownloadProtocol:
             raise ValueError("Wrong message type (should be 03 10 or 03 10): ")
         return msgType, payload
 
-    def __receiveAndSaveFile(self, filename, filehash, s):
+    def __receiveAndSaveFile(self, filename, receivedFileHash, s):
         # open file first in write mode (overrides file if it exists!)
         with open(filename, 'wb') as f:
             print("Saving next file chunk...")
@@ -48,11 +48,15 @@ class ClientDownloadProtocol:
                 f.write(msg)
         print("File downloaded successfully, checking hash...")
 
-        file = open(filename, "r").read().encode("utf-8")
-        fileHash = getHash(file)
-        file.close()
+        # TODO extract the hash received in the command protocol response, so we can check it here
+        #file = open(filename, "r").read().encode("utf-8")
+        #downloadedFileHash = getHash(file)
+        #if downloadedFileHash == receivedFileHash:
+        #    print("Hash ok!")
+        #else:
+        #    print("Hash faulty, closing connection!") # TODO error handling, close connection
+        #file.close()
 
-        # TODO check hash
 
 
     def executeDownloadProtocol(self, filename, filehash, s):

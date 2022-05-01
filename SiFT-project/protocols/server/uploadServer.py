@@ -26,6 +26,7 @@ class ServerUploadProtocol:
         with open(filename, 'wb') as f:
             print("Saving next file chunk...")
             typ, msg = self.__receiveNextFileChunk(s)
+            print(typ)
             f.write(msg)
 
         # append the rest
@@ -49,4 +50,3 @@ class ServerUploadProtocol:
         self.__receiveAndSaveFile(filename, s)
         resp = self.__createAndEncryptUploadResponse(filename, s)
         s.sendall(resp)
-

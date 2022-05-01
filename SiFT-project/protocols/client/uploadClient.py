@@ -25,9 +25,13 @@ class ClientUploadProtocol:
         msg = self.MTP.decryptAndVerify(header+tail).decode("utf-8")
         msgPayload = msg.splitlines()
         receivedFileHash = msgPayload[0]
-        receivedFileSize = msgPayload[1]
+        print(receivedFileHash)
+        receivedFileSize = int(msgPayload[1])
+        print(receivedFileSize)
 
         localFileHash, localFileSize = getFileInfo(filename)
+        print(localFileHash)
+        print(localFileSize)
 
         if localFileHash != receivedFileHash:
             raise ValueError("File hash of uploaded file and local file are different! Closing connection.") # TODO close connection
@@ -36,9 +40,9 @@ class ClientUploadProtocol:
 
     def __createAndEncryptChunk(self, f, isLast=False):
         if isLast:
-            dnloadres = self.MTP.encryptAndAuth(b'\x02\x00', f)
-        else:
             dnloadres = self.MTP.encryptAndAuth(b'\x02\x01', f)
+        else:
+            dnloadres = self.MTP.encryptAndAuth(b'\x02\x00', f)
         return dnloadres
 
     def __sendChunk(self, dnloadres, s):

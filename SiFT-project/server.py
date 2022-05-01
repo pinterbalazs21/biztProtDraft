@@ -131,17 +131,15 @@ class SiFTServer:
 
         elif command == "upl":  # 3 args
             print("command request: upl")
-            fileName = args[0]# todo check, if exists: error
-            size = int(args[1])
-            hash = args[2]
+            fileName = args[0] # todo check, if exists: error
+            hash = args[1]
+            size = int(args[2])
 
-            if not self.__checkDir(os.getcwd(), args[0]):
-                raise Exception('File is outside root directory of user, access denied')
             path = os.path.join(os.getcwd(), args[0])
             print("File will be uploaded to: ", path)
 
             commandHandler.encryptCommandRes(conn, command, 'accept')
-            uploadHandler.executeUploadProtocol(path, size, hash, conn)
+            uploadHandler.executeUploadProtocol(path, conn)
 
         elif command == "dnl":  # 1 args
             print("command request: dnl")

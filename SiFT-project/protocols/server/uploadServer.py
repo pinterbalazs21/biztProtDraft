@@ -34,11 +34,11 @@ class ServerUploadProtocol:
                 print("Saving next file chunk...")
                 typ, msg = self.__receiveNextFileChunk(s)
                 f.write(msg)
-        print("File downloaded successfully")
+        print("File uploaded successfully")
 
     def __createAndEncryptUploadResponse(self, filename, s):
         fileHash, fileSize = getFileInfo(filename)
-        resPayload = str(fileHash + '\n' + fileSize)
+        resPayload = str(fileHash + '\n' + str(fileSize)).encode("utf-8")
 
         msg = self.MTP.encryptAndAuth(b'\x02\x10', resPayload)
         return msg

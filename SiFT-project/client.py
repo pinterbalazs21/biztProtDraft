@@ -49,6 +49,7 @@ class SiFTClient():
                     self.commandHandler.sendDELReq(s, rawCommmand.split()[1])
                     self.commandHandler.waitForCommandResponse(s)
                 elif command == 'upl' and len(rawCommmand.split()) == 2:
+                    fileName = rawCommmand.split()[1]
                     self.commandHandler.sendUPLReq(s, rawCommmand.split()[1])
                     if self.commandHandler.waitForCommandResponse(s):
                         self.uploadHandler.executeUploadProtocol(fileName, s)

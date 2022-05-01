@@ -1,4 +1,5 @@
 import base64
+import os
 from Crypto.Hash import SHA256
 
 from protocols.common.utils import getFileInfo
@@ -14,7 +15,7 @@ class ClientCommandsProtocol:
         request = type
         if args:  # has at least 1 param
             for parameter in args:
-                request = request + "\n" + parameter
+                request = request + "\n" + str(parameter)
         return request.encode("utf-8")
 
     def __encryptCommandReq(self, commandType, *args):
@@ -53,7 +54,7 @@ class ClientCommandsProtocol:
 
     def sendUPLReq(self, s, fName):
         fileHash, fileSize = getFileInfo(fName)
-        msg = self.__encryptCommandReq("upl", fName, fileHash, fileSize)
+        msg = self.__encryptCommandReq("upl", os.path.basename(fName), fileHash, fileSize)
         s.sendall(msg)
         self.__saveHash(msg)
 

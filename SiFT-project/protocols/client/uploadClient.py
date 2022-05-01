@@ -27,8 +27,7 @@ class ClientUploadProtocol:
         receivedFileHash = msgPayload[0]
         receivedFileSize = msgPayload[1]
 
-        file = open(filename, "r").read().encode("utf-8")
-        localFileHash, localFileSize = getFileInfo(file)
+        localFileHash, localFileSize = getFileInfo(filename)
 
         if localFileHash != receivedFileHash:
             raise ValueError("File hash of uploaded file and local file are different! Closing connection.") # TODO close connection

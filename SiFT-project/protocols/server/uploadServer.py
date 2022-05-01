@@ -17,8 +17,9 @@ class ServerUploadProtocol:
         msgType = header[2:4]
         payload = self.MTP.decryptAndVerify(header + msg)
         if msgType != b'\x02\x00' and msgType != b'\x02\x01':
-            # TODO proper error handling (close connection or what to do?)
-            raise ValueError("Wrong message type (should be 03 10 or 03 10): ")
+            s.close()
+            print("Connection closed, wrong message type")
+            raise ValueError("Wrong message type (should be 03 10 or 03 10)")
         return msgType, payload
 
     def __receiveAndSaveFile(self, filename, s):

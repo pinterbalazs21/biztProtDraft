@@ -28,39 +28,40 @@ class SiFTClient():
             # execute login protocol
             self.loginHandler.executeLogin(s)
 
-            # start commands protocol TODO shouldn't this loop be in the commands protocol?
+            # start commands protocol
             while True:
                 rawCommmand = input()
-                command = rawCommmand.split()[0]
-                #commands = ['pwd', 'lst', 'chd', 'mkd', 'del', 'upl', 'dnl']
-                if command == 'pwd' and len(rawCommmand.split()) == 1:
-                    self.commandHandler.sendPWDReq(s)
-                    self.commandHandler.waitForCommandResponse(s)
-                elif command == 'lst' and len(rawCommmand.split()) == 1:
-                    self.commandHandler.sendLSTReq(s)
-                    self.commandHandler.waitForCommandResponse(s)
-                elif command == 'chd' and len(rawCommmand.split()) == 2:
-                    self.commandHandler.sendCHDReq(s, rawCommmand.split()[1])
-                    self.commandHandler.waitForCommandResponse(s)
-                elif command == 'mkd' and len(rawCommmand.split()) == 2:
-                    self.commandHandler.sendMKDReq(s, rawCommmand.split()[1])
-                    self.commandHandler.waitForCommandResponse(s)
-                elif command == 'del' and len(rawCommmand.split()) == 2:
-                    self.commandHandler.sendDELReq(s, rawCommmand.split()[1])
-                    self.commandHandler.waitForCommandResponse(s)
-                elif command == 'upl' and len(rawCommmand.split()) == 2:
-                    fileName = rawCommmand.split()[1]
-                    self.commandHandler.sendUPLReq(s, rawCommmand.split()[1])
-                    if self.commandHandler.waitForCommandResponse(s):
-                        self.uploadHandler.executeUploadProtocol(fileName, s)
-                elif command == 'dnl' and len(rawCommmand.split()) == 2:
-                    fileName = rawCommmand.split()[1]
-                    self.commandHandler.sendDNLReq(s, fileName)
-                    if self.commandHandler.waitForCommandResponse(s):
-                        self.downloadHandler.executeDownloadProtocol(fileName, s)
-                else:
-                    print("Please enter a valid command")
-                    continue
+                self.commandHandler.commandHandling(rawCommmand, s, self.downloadHandler, self.uploadHandler)
+                #command = rawCommmand.split()[0]
+                ##commands = ['pwd', 'lst', 'chd', 'mkd', 'del', 'upl', 'dnl']
+                #if command == 'pwd' and len(rawCommmand.split()) == 1:
+                #    self.commandHandler.sendPWDReq(s)
+                #    self.commandHandler.waitForCommandResponse(s)
+                #elif command == 'lst' and len(rawCommmand.split()) == 1:
+                #    self.commandHandler.sendLSTReq(s)
+                #    self.commandHandler.waitForCommandResponse(s)
+                #elif command == 'chd' and len(rawCommmand.split()) == 2:
+                #    self.commandHandler.sendCHDReq(s, rawCommmand.split()[1])
+                #    self.commandHandler.waitForCommandResponse(s)
+                #elif command == 'mkd' and len(rawCommmand.split()) == 2:
+                #    self.commandHandler.sendMKDReq(s, rawCommmand.split()[1])
+                #    self.commandHandler.waitForCommandResponse(s)
+                #elif command == 'del' and len(rawCommmand.split()) == 2:
+                #    self.commandHandler.sendDELReq(s, rawCommmand.split()[1])
+                #    self.commandHandler.waitForCommandResponse(s)
+                #elif command == 'upl' and len(rawCommmand.split()) == 2:
+                #    fileName = rawCommmand.split()[1]
+                #    self.commandHandler.sendUPLReq(s, rawCommmand.split()[1])
+                #    if self.commandHandler.waitForCommandResponse(s):
+                #        self.#.executeUploadProtocol(fileName, s)
+                #elif command == 'dnl' and len(rawCommmand.split()) == 2:
+                #    fileName = rawCommmand.split()[1]
+                #    self.commandHandler.sendDNLReq(s, fileName)
+                #    if self.commandHandler.waitForCommandResponse(s):
+                #        self.downloadHandler.executeDownloadProtocol(fileName, s)
+                #else:
+                #    print("Please enter a valid command")
+                #    continue
 
 client = SiFTClient()
 client.connect()

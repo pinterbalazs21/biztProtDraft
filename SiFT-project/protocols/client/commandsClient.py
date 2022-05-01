@@ -54,7 +54,7 @@ class ClientCommandsProtocol:
 
     def sendUPLReq(self, s, fName):
         fileHash, fileSize = getFileInfo(fName)
-        msg = self.__encryptCommandReq("upl", os.path.basename(fName), fileHash, fileSize)
+        msg = self.__encryptCommandReq("upl", os.path.basename(fName), fileSize, fileHash)
         s.sendall(msg)
         self.__saveHash(msg)
 
@@ -116,7 +116,42 @@ class ClientCommandsProtocol:
             decodedBytes = base64.b64decode(encodedLst.encode('utf-8'))
             print(decodedBytes.decode("utf-8"))
         elif command == "dnl":
-            filesize = args[2]
-            filehash = args[3]
-            print("Hash of the file to be downloaded is: ", filehash)
-            print("Size of the file to be downloaded is: ", filesize)
+            self.latestFilesize = args[2]
+            self.latestFilehash = args[3]
+            print("Hash of the file to be downloaded is: ", self.latestFilesize)
+            print("Size of the file to be downloaded is: ", self.latestFilehash)
+
+
+    def commandHandling(self, rawCommmand, s, downloadHandler, uploadHandler):
+        command = rawCommmand.split()[0]
+        # commands = ['pwd', 'lst', 'chd', 'mkd', 'del', 'upl', 'dnl']
+        if command == 'pwd' and len(rawCommmand.split()) == 1:
+            self.sendPWDReq(s)
+            self.waitForCommandResponse(s)
+        elif command == 'lst' and len(rawCommmand.split()) == 1:
+            self.sendLSTReq(s)
+            self.waitForCommandResponse(s)
+        elif command == 'chd' and len(rawCommmand.split()) == 2:
+            self.sendCHDReq(s, rawCommmand.split()[1])
+            self.waitForCommandResponse(s)
+        elif command == 'mkd' and len(rawCommmand.split()) == 2:
+            self.sendMKDReq(s, rawCommmand.split()[1])
+            self.waitForCommandResponse(s)
+        elif command == 'del' and len(rawCommmand.split()) == 2:
+            self.sendDELReq(s, rawCommmand.split()[1])
+            self.waitForCommandResponse(s)
+        elif command == 'upl' and len(rawCommmand.split()) == 2:
+            fileName = rawCommmand.split()[1]
+            if not os.path.isfile(fileName):
+                print("file not found")
+                return
+            self.sendUPLReq(s, rawCommmand.split()[1])
+            if self.waitForCommandResponse(s):
+                uploadHandler.executeUploadProtocol(fileName, s)
+        elif command == 'dnl' and len(rawCommmand.split()) == 2:
+            fileName = rawCommmand.split()[1]
+            self.sendDNLReq(s, fileName)
+            if self.waitForCommandResponse(s):
+                downloadHandler.executeDownloadProtocol(fileName, self.latestFilehash, s)
+        else:
+            print("Please enter a valid command")

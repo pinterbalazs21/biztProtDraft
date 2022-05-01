@@ -12,3 +12,8 @@ def getFileInfo(path):
     file = open(path, "r")
     fileHash = getHash(file.read().encode("utf-8"))
     return fileHash, size
+
+def checkDir(root, target):
+    root = os.path.abspath(root)
+    target = os.path.abspath(target)
+    return os.path.commonpath([root]) == os.path.commonpath([root, target])

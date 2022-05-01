@@ -29,7 +29,7 @@ class ClientDownloadProtocol:
         msgType = header[2:4]
         payload = self.MTP.decryptAndVerify(header + msg)
         if msgType != b'\x03\x10' and msgType != b'\x03\x11':
-            # TODO proper error handling (close connection or what to do?)
+            s.close()
             raise ValueError("Wrong message type (should be 03 10 or 03 10): ")
         return msgType, payload
 
@@ -46,16 +46,18 @@ class ClientDownloadProtocol:
                 print("Saving next file chunk...")
                 typ, msg = self.__receiveNextFileChunk(s)
                 f.write(msg)
-        print("File downloaded successfully, checking hash...")
 
-        # TODO extract the hash received in the command protocol response, so we can check it here
-        #file = open(filename, "r").read().encode("utf-8")
-        #downloadedFileHash = getHash(file)
-        #if downloadedFileHash == receivedFileHash:
-        #    print("Hash ok!")
-        #else:
-        #    print("Hash faulty, closing connection!") # TODO error handling, close connection
-        #file.close()
+        file = open(filename, "r")
+        textFile = file.read().encode("utf-8")
+        downloadedFileHash = getHash(textFile)
+        if downloadedFileHash != receivedFileHash:
+            print("Hash faulty, closing connection!")
+            s.close()
+            file.close()
+            os.remove(filename)
+            raise Exception('WRONG HASH!')
+        print("File downloaded successfully, checking hash...")
+        file.close()
 
 
 
@@ -75,4 +77,4 @@ class ClientDownloadProtocol:
 
         encryptedDownloadRequest = self.__createAndEncryptDownloadRequest()
         s.sendall(encryptedDownloadRequest)
-        self.__receiveAndSaveFile(filename, s)
+        self.__receiveAndSaveFile(filename, filehash, s)

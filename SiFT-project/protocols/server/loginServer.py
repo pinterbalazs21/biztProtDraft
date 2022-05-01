@@ -47,7 +47,7 @@ class ServerLoginProtocol:
     def __createFinalKey(self, ikey, salt):
         print("Final key constructed:")
         key = HKDF(ikey, 32, salt, SHA256)
-        print(key) # TODO do we really want to print this when not debugging?
+        #print(key)
         self.MTP.setFinalKey(key)
 
     def __splitLoginRequest(self, loginRequest):
@@ -63,11 +63,10 @@ class ServerLoginProtocol:
         print("client random " + clientRandomStr)
         print("time " + timeStampStr)
         print("username " + username)
-        print("pw " + pw)  # TODO we probably shouldn't print this, for DEBUG only
+        #print("pw " + pw)
         print("-----")
         return (clientRandom, timeStampStr, username, pw)
 
-    # todo ez mehetne MTP-be checknél?
     def __checkTimestamp(self, timeStampStr, window=2E9):
         timeStamp = int(timeStampStr)
         currentTime = time.time_ns()
@@ -100,8 +99,7 @@ class ServerLoginProtocol:
             except ValueError as ve:
                 print(ve)
                 print('Error: Cannot import password from file ' + self.userdatafile)
-                return False # TODO erre conn close lesz a reakció, szerintem itt inkább az kéne
-                # sys.exit(1)  # TODO itt nem kéne conn.close() kéne?
+                return False
 
     def acceptLoginRequest(self, s, keypair):
         header, msg = self.MTP.waitForMessage(s)
@@ -121,19 +119,17 @@ class ServerLoginProtocol:
                 print("Wrong timestamp")
                 s.close()
                 return
-            if not self.__checkUserData(username, pwd):  # TODO
+            if not self.__checkUserData(username, pwd):
                 print("Checking user data failed, closing connection")
                 s.close()
                 return
 
-            # TODO maybe move this into a helper func
             response, salt, server_random = self.__encryptLoginResponse(loginRequest, tk)
             ikey = clientRandom + server_random
             self.__createFinalKey(ikey, salt)
             s.sendall(response)
             print("Login response sent")
         else:
-            # todo check if this is right:
             print("Wrong request type (not login request)")
             s.close()
         return

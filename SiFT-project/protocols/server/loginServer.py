@@ -75,7 +75,7 @@ class ServerLoginProtocol:
         print("-----")
         return (clientRandom, timeStampStr, username, pw)
 
-    def __checkTimestamp(self, timeStampStr, window=2E9):
+    def __checkTimestamp(self, timeStampStr, window=1.2E11):
         timeStamp = int(timeStampStr)
         currentTime = time.time_ns()
         if not (currentTime - window / 2) < timeStamp & timeStamp < (currentTime + window / 2):

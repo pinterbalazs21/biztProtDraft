@@ -45,7 +45,7 @@ class ServerUploadProtocol:
 
     def executeUploadProtocol(self, filename, s):
         try:
-            if os.path.exists(filename):
+            if os.path.exists(filename): # note: we can't reach this right now, as the upl command currently does not enable uploading files that already exist on the server
                 print("File to be uploaded will override already existing file.")
             self.__receiveAndSaveFile(filename, s)
             resp = self.__createAndEncryptUploadResponse(filename, s)

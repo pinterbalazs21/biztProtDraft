@@ -116,7 +116,7 @@ class ServerCommandsProtocol:
             except CloseConnectionException as ce:
                 raise ce
             except Exception as error:
-                print("Exception" + str(error))
+                print("Exception " + str(error))
                 self.encryptCommandRes(conn, command, 'failure', str(error))
         elif command == "upl":  # 3 args
             try:
@@ -134,7 +134,7 @@ class ServerCommandsProtocol:
             except CloseConnectionException as ce:
                 raise ce
             except Exception as error:
-                print("Exception" + str(error))
+                print("Exception " + str(error))
                 self.encryptCommandRes(conn, command, 'reject', str(error))
         elif command == "dnl":  # 1 args
             print("command request: dnl")

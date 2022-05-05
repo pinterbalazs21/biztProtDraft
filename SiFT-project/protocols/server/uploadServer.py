@@ -5,6 +5,7 @@ and it must only be used by the client after receiving an 'accept' response to a
 '''
 import os.path
 
+from protocols.common.closeConnectionException import CloseConnectionException
 from protocols.common.utils import getHash, getFileInfo
 
 
@@ -17,9 +18,7 @@ class ServerUploadProtocol:
         msgType = header[2:4]
         payload = self.MTP.decryptAndVerify(header + msg)
         if msgType != b'\x02\x00' and msgType != b'\x02\x01':
-            s.close()
-            print("Connection closed, wrong message type")
-            raise ValueError("Wrong message type (should be 03 10 or 03 10)")
+            raise CloseConnectionException("Wrong message type: " + msgType + "instead of 02 00 or 02 10")
         return msgType, payload
 
     def __receiveAndSaveFile(self, filename, s):
@@ -27,7 +26,6 @@ class ServerUploadProtocol:
         with open(filename, 'wb') as f:
             print("Saving next file chunk...")
             typ, msg = self.__receiveNextFileChunk(s)
-            print(typ)
             f.write(msg)
 
         # append the rest
@@ -46,8 +44,13 @@ class ServerUploadProtocol:
         return msg
 
     def executeUploadProtocol(self, filename, s):
-        if os.path.exists(filename):
-            print("File to be uploaded will override already existing file.")
-        self.__receiveAndSaveFile(filename, s)
-        resp = self.__createAndEncryptUploadResponse(filename, s)
-        s.sendall(resp)
+        try:
+            if os.path.exists(filename):
+                print("File to be uploaded will override already existing file.")
+            self.__receiveAndSaveFile(filename, s)
+            resp = self.__createAndEncryptUploadResponse(filename, s)
+            s.sendall(resp)
+        except CloseConnectionException as ce:
+            raise ce
+        except Exception as e:
+            CloseConnectionException(str(e))

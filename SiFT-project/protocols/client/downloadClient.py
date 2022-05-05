@@ -56,19 +56,24 @@ class ClientDownloadProtocol:
         file.close()
 
     def executeDownloadProtocol(self, filename, filehash, s):
-        # file has to be saved into the current working directory, so path is removed here
-        filename = os.path.basename(filename)
+        try:
+            # file has to be saved into the current working directory, so path is removed here
+            filename = os.path.basename(filename)
 
-        ans = "unknown"
-        while ans.lower() != "n" and ans.lower() != "y" and ans != "":
-            print("File is ready to be downloaded. Do you want to proceed? [Y/n]", end=" ")
-            ans = input().strip("\n")
+            ans = "unknown"
+            while ans.lower() != "n" and ans.lower() != "y" and ans != "":
+                print("File is ready to be downloaded. Do you want to proceed? [Y/n]", end=" ")
+                ans = input().strip("\n")
 
-        if ans == "n":
-            self.__cancelDownload(s)
-            print("Download canceled.")
-            return
+            if ans == "n":
+                self.__cancelDownload(s)
+                print("Download canceled.")
+                return
 
-        encryptedDownloadRequest = self.__createAndEncryptDownloadRequest()
-        s.sendall(encryptedDownloadRequest)
-        self.__receiveAndSaveFile(filename, filehash, s)
+            encryptedDownloadRequest = self.__createAndEncryptDownloadRequest()
+            s.sendall(encryptedDownloadRequest)
+            self.__receiveAndSaveFile(filename, filehash, s)
+        except CloseConnectionException as ce:
+            raise ce
+        except Exception as e:
+            CloseConnectionException(str(e))

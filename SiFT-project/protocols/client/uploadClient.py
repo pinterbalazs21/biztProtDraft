@@ -7,6 +7,7 @@ import os.path
 import sys
 import traceback
 
+from protocols.common.closeConnectionException import CloseConnectionException
 from protocols.common.utils import getHash, getFileInfo
 
 
@@ -19,9 +20,7 @@ class ClientUploadProtocol:
         header, tail = self.MTP.waitForMessage(s)
         msgType = header[2:4]
         if msgType != b'\x02\x10':
-            s.close()
-            print("Connection closed!")
-            raise ValueError("Wrong message type (should be 02 10): " + msgType)
+            raise CloseConnectionException("Wrong message type: " + msgType + "instead of 02 10")
         msg = self.MTP.decryptAndVerify(header+tail).decode("utf-8")
         msgPayload = msg.splitlines()
         receivedFileHash = msgPayload[0]
@@ -34,9 +33,9 @@ class ClientUploadProtocol:
         print(localFileSize)
 
         if localFileHash != receivedFileHash:
-            raise ValueError("File hash of uploaded file and local file are different! Closing connection.") # TODO close connection
+            raise CloseConnectionException("File hash of uploaded file and local file are different! Closing connection.")
         if localFileSize != receivedFileSize:
-            raise ValueError("File size of uploaded file and local file are different! Closing connection.") # TODO close connection
+            raise CloseConnectionException("File size of uploaded file and local file are different! Closing connection.")
 
     def __createAndEncryptChunk(self, f, isLast=False):
         if isLast:
@@ -66,10 +65,11 @@ class ClientUploadProtocol:
                 nextChunk = f.read(1024)
 
     def executeUploadProtocol(self, path, s):
-        try: # TODO this should be removed and proper error handling added - we have to close connection in a lot of cases, see specification
+        try:
             # let's send the file
             self.__sendFileChunks(path, s)
             self.__waitForResponse(path, s)
+        except CloseConnectionException as ce:
+            raise ce
         except Exception as e:
-            traceback.print_exception(*sys.exc_info())
-            print(e)
+            CloseConnectionException(str(e))

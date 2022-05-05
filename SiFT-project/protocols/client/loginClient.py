@@ -1,10 +1,11 @@
-import sys
 import time
 from Crypto.Cipher import PKCS1_OAEP
 from Crypto.Hash import SHA256
 from Crypto import Random
 from Crypto.Protocol.KDF import HKDF
 from Crypto.PublicKey import RSA
+
+from protocols.common.closeConnectionException import CloseConnectionException
 
 
 class ClientLoginProtocol:
@@ -19,13 +20,11 @@ class ClientLoginProtocol:
         try:
             return RSA.import_key(pubkeystr)
         except ValueError:
-            print('Error: Cannot import public key from file ' + self.pubkeyfile)
-            sys.exit(1)
+            raise CloseConnectionException('Error: Cannot import public key from file ' + self.pubkeyfile)
 
     def __createFinalKey(self, ikey, salt):
-        print("Final key constructed:")
+        print("Final key constructed")
         key = HKDF(ikey, 32, salt, SHA256)
-        print(key) # TODO do we really want to print this when not debugging? (with other words: delete this line later)
         self.MTP.setFinalKey(key)
 
     def __saveHash(self, payload):
@@ -43,7 +42,6 @@ class ClientLoginProtocol:
         return loginPayload, clientRandom  # type: str
 
     def __encryptLoginRequest(self, loginReq):  # loginReq == payload
-        print("Encrypting login req")
         tk = Random.get_random_bytes(32)
         msgLen = 16 + len(loginReq) + 12 + 256  # length of header, (encrypted) payload, auth mac + ETK
         msg = self.MTP.encryptAndAuth(b'\x00\x00', loginReq, msgLen, tk)
@@ -56,7 +54,7 @@ class ClientLoginProtocol:
         payload = self.MTP.decryptAndVerify(msg, tk)
         # üzenetben stringként 1 byte == 2 hexa szám-->64 hosszú str
         if self.loginHash != payload[0:64].decode('utf-8'):
-            print("Wrong Hash Value")
+            raise CloseConnectionException("Wrong hash value in login response")
         return payload
 
     def __promptUserData(self):
@@ -73,7 +71,7 @@ class ClientLoginProtocol:
         msgType = header[2:4]
         len = int.from_bytes(MTPdata_size, byteorder='big')
         if (len == 0):
-            exit(1) # TODO proper error handling
+            raise CloseConnectionException("Length of connection confirmation is 0")
         tail = s.recv(len - 16)
         if msgType == b'\x00\x10':
             payload = self.__decryptLoginResponse(tk, header + tail)
@@ -84,8 +82,7 @@ class ClientLoginProtocol:
             self.__createFinalKey(ikey, salt)
             print("Connection established")
             return
-        print("something went wrong (wrong message type)")
-        # TODO error handling - success or not, close session if not, etc.
+        raise CloseConnectionException("Wrong message type (msgType " + msgType + " instead of 00 10")
 
     def executeLogin(self, s):
         """
@@ -96,5 +93,5 @@ class ClientLoginProtocol:
         loginPayload, clientRandom = self.__createLoginRequest(username, pwd)
         encryptedLoginRequest, tk = self.__encryptLoginRequest(loginPayload)
         s.sendall(encryptedLoginRequest)
-        self.__saveHash(loginPayload) # the description said to save the hash only after sending the request
+        self.__saveHash(loginPayload)  # the description said to save the hash only after sending the request
         self.__receiveConnectionConfirmation(s, clientRandom, tk)

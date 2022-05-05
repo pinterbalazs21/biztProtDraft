@@ -1,16 +1,15 @@
 import socket
 
 from protocols.client.commandsClient import ClientCommandsProtocol
-from protocols.client.downloadClient import ClientDownloadProtocol
 from protocols.client.loginClient import ClientLoginProtocol
 from protocols.client.downloadClient import ClientDownloadProtocol
 from protocols.client.uploadClient import ClientUploadProtocol
+from protocols.common.closeConnectionException import CloseConnectionException
 from protocols.mtp import MTP
-import base64
+
 
 class SiFTClient():
-
-    def __init__(self, port = 5150):
+    def __init__(self, port=5150):
         self.port = port
         self.host = "localhost"
         self.key = ""
@@ -26,42 +25,27 @@ class SiFTClient():
             s.connect((self.host, self.port))
 
             # execute login protocol
-            self.loginHandler.executeLogin(s)
+            try:
+                self.loginHandler.executeLogin(s)
+            except CloseConnectionException as ce:
+                print("Exception caught:")
+                print(ce)
+                s.close()
+                print("Connection closed, thread terminated")
+                return
 
             # start commands protocol
             while True:
-                rawCommmand = input()
-                self.commandHandler.commandHandling(rawCommmand, s, self.downloadHandler, self.uploadHandler)
-                #command = rawCommmand.split()[0]
-                ##commands = ['pwd', 'lst', 'chd', 'mkd', 'del', 'upl', 'dnl']
-                #if command == 'pwd' and len(rawCommmand.split()) == 1:
-                #    self.commandHandler.sendPWDReq(s)
-                #    self.commandHandler.waitForCommandResponse(s)
-                #elif command == 'lst' and len(rawCommmand.split()) == 1:
-                #    self.commandHandler.sendLSTReq(s)
-                #    self.commandHandler.waitForCommandResponse(s)
-                #elif command == 'chd' and len(rawCommmand.split()) == 2:
-                #    self.commandHandler.sendCHDReq(s, rawCommmand.split()[1])
-                #    self.commandHandler.waitForCommandResponse(s)
-                #elif command == 'mkd' and len(rawCommmand.split()) == 2:
-                #    self.commandHandler.sendMKDReq(s, rawCommmand.split()[1])
-                #    self.commandHandler.waitForCommandResponse(s)
-                #elif command == 'del' and len(rawCommmand.split()) == 2:
-                #    self.commandHandler.sendDELReq(s, rawCommmand.split()[1])
-                #    self.commandHandler.waitForCommandResponse(s)
-                #elif command == 'upl' and len(rawCommmand.split()) == 2:
-                #    fileName = rawCommmand.split()[1]
-                #    self.commandHandler.sendUPLReq(s, rawCommmand.split()[1])
-                #    if self.commandHandler.waitForCommandResponse(s):
-                #        self.#.executeUploadProtocol(fileName, s)
-                #elif command == 'dnl' and len(rawCommmand.split()) == 2:
-                #    fileName = rawCommmand.split()[1]
-                #    self.commandHandler.sendDNLReq(s, fileName)
-                #    if self.commandHandler.waitForCommandResponse(s):
-                #        self.downloadHandler.executeDownloadProtocol(fileName, s)
-                #else:
-                #    print("Please enter a valid command")
-                #    continue
+                try:
+                    rawCommmand = input()
+                    self.commandHandler.commandHandling(rawCommmand, s, self.downloadHandler, self.uploadHandler)
+                except CloseConnectionException as ce:
+                    print("Exception caught:")
+                    print(ce)
+                    s.close()
+                    print("Connection closed, thread terminated")
+                    return
+
 
 client = SiFTClient()
 client.connect()

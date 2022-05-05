@@ -51,6 +51,8 @@ class ServerCommandsProtocol:
             print("command request: pwd")
             try:
                 self.encryptCommandRes(conn, command, 'success', self.currentWD)
+            except CloseConnectionException as ce:
+                raise ce
             except Exception as error:
                 self.encryptCommandRes(conn, command, 'failure', str(error))
         elif command == "lst": # 0 args
@@ -65,6 +67,8 @@ class ServerCommandsProtocol:
                 encodedStr = base64.b64encode(lstStr.encode('utf-8')).decode('utf-8')
                 self.encryptCommandRes(conn, command, 'success', encodedStr)
                 print("Sending success")
+            except CloseConnectionException as ce:
+                raise ce
             except Exception as error:
                 self.encryptCommandRes(conn, command, 'failure', str(error))
         elif command == "chd": # 1 args
@@ -77,6 +81,8 @@ class ServerCommandsProtocol:
                     raise Exception('Folder does not exist')
                 self.currentWD = path
                 self.encryptCommandRes(conn, command, 'success')
+            except CloseConnectionException as ce:
+                raise ce
             except Exception as error:
                 self.encryptCommandRes(conn, command, 'failure', str(error))
         elif command == "mkd":  # 1 args
@@ -87,6 +93,8 @@ class ServerCommandsProtocol:
                     raise Exception('File is outside root directory of user, access denied')
                 os.mkdir(path)
                 self.encryptCommandRes(conn, command, 'success')
+            except CloseConnectionException as ce:
+                raise ce
             except Exception as error:
                 self.encryptCommandRes(conn, command, 'failure', str(error))
         elif command == "del":  # 1 args
@@ -105,6 +113,8 @@ class ServerCommandsProtocol:
                     raise Exception('File or folder does not exist (or not empty)')
                 self.encryptCommandRes(conn, command, 'success')
                 print("Success-_---------")
+            except CloseConnectionException as ce:
+                raise ce
             except Exception as error:
                 print("Exception" + str(error))
                 self.encryptCommandRes(conn, command, 'failure', str(error))
@@ -121,6 +131,8 @@ class ServerCommandsProtocol:
                 print("File will be uploaded to: ", path)
                 self.encryptCommandRes(conn, command, 'accept')
                 uploadHandler.executeUploadProtocol(path, conn)
+            except CloseConnectionException as ce:
+                raise ce
             except Exception as error:
                 print("Exception" + str(error))
                 self.encryptCommandRes(conn, command, 'reject', str(error))
@@ -142,5 +154,7 @@ class ServerCommandsProtocol:
                 else:
                     print("Exception, file does not exist")
                     raise Exception('File does not exist')
+            except CloseConnectionException as ce:
+                raise ce
             except Exception as error:
                 self.encryptCommandRes(conn, command, 'reject', str(error))

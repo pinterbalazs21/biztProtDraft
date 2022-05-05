@@ -52,7 +52,7 @@ class MTP:
         try:
             payload = AE.decrypt_and_verify(encrypted_payload, authtag)
         except Exception as e:
-            raise CloseConnectionException("Error: decryption of message failed!")
+            raise CloseConnectionException("Error: decryption of message failed: " + str(e))
         print("Operation was successful: message is intact, content is decrypted.")
         # TODO delete this if not debugging
         print("payload:")

@@ -7,6 +7,7 @@ from Crypto import Random
 from Crypto.Protocol.KDF import HKDF
 from Crypto.Protocol.KDF import scrypt
 
+from protocols.common.closeConnectionException import CloseConnectionException
 from protocols.common.utils import getHash
 
 
@@ -70,7 +71,8 @@ class ServerLoginProtocol:
     def __checkTimestamp(self, timeStampStr, window=2E9):
         timeStamp = int(timeStampStr)
         currentTime = time.time_ns()
-        return (currentTime - window / 2) < timeStamp & timeStamp < (currentTime + window / 2)
+        if not (currentTime - window / 2) < timeStamp & timeStamp < (currentTime + window / 2):
+            raise CloseConnectionException("Wrong timestamp")
         # TODO Preferably, the server should also check if the same request was not received in another connection (with another client) within the acceptance time window around the current time at the server.
 
     def __createHash(self, pwd, salt):
@@ -78,7 +80,6 @@ class ServerLoginProtocol:
         return pwdhash
 
     def __checkUserData(self, username, password):
-        #return True
         with open(self.userdatafile, newline='') as csvfile:
             userdata = csv.reader(csvfile, delimiter=',')
             try:
@@ -90,16 +91,13 @@ class ServerLoginProtocol:
                     if rUsername == username:
                         pwdHash = self.__createHash(password, rSalt)
                         if rPwdHash != pwdHash:
-                            print('Error: Wrong password')
-                            return False
+                            raise CloseConnectionException('Error: Wrong password')
                         else:
-                            return True
-                print('Username unknown')
-                return False
+                            return
+                raise CloseConnectionException('Username unknown')
             except ValueError as ve:
                 print(ve)
-                print('Error: Cannot import password from file ' + self.userdatafile)
-                return False
+                raise CloseConnectionException('Error: Cannot import password from file ' + self.userdatafile)
 
     def acceptLoginRequest(self, s, keypair):
         header, msg = self.MTP.waitForMessage(s)
@@ -109,20 +107,12 @@ class ServerLoginProtocol:
             loginRequest, tk = self.__decryptLoginRequest(header + msg, keypair)
             # todo check if this is right:
             if not loginRequest:
-                print("No(t) request")
-                s.close()
-                return
+                raise CloseConnectionException("No(t) a login request")
 
             clientRandom, timeStampStr, username, pwd = self.__splitLoginRequest(loginRequest)
 
-            if not self.__checkTimestamp(timeStampStr):
-                print("Wrong timestamp")
-                s.close()
-                return
-            if not self.__checkUserData(username, pwd):
-                print("Checking user data failed, closing connection")
-                s.close()
-                return
+            self.__checkTimestamp(timeStampStr)
+            self.__checkUserData(username, pwd) # raises close connection exception in case of issues
 
             response, salt, server_random = self.__encryptLoginResponse(loginRequest, tk)
             ikey = clientRandom + server_random

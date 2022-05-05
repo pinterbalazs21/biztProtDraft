@@ -6,6 +6,9 @@ and it must only be used by the client after receiving an 'accept' response to a
 import sys
 import traceback
 
+from protocols.common.closeConnectionException import CloseConnectionException
+
+
 class ServerDownloadProtocol:
     def __init__(self, MTP):
         self.MTP = MTP
@@ -14,9 +17,7 @@ class ServerDownloadProtocol:
         header, tail = self.MTP.waitForMessage(s)
         msgType = header[2:4]
         if msgType != b'\x03\x00':
-            s.close()
-            print("Connection closed!")
-            raise ValueError("Wrong message type (should be 03 00): " + msgType)
+            raise CloseConnectionException("Wrong message type: " + msgType + "instead of 03 00")
         msg = self.MTP.decryptAndVerify(header+tail)
         if msg == b'Cancel':
             print("Received \'Cancel\' download request of download protocol from client")
@@ -25,9 +26,7 @@ class ServerDownloadProtocol:
             print("Received \'Ready\' download request of download protocol from client")
             return True
         else:
-            s.close()
-            print("Connection closed!")
-            raise ValueError("Bad download request (not Cancel or Ready)")
+            raise CloseConnectionException("Bad download request (not Cancel or Ready)")
 
     def __createAndEncryptChunk(self, f, isLast=False):
         if isLast:
@@ -57,13 +56,13 @@ class ServerDownloadProtocol:
                 nextChunk = f.read(1024)
 
     def executeDownloadProtocol(self, path, s):
-        try: # TODO this should be removed and proper error handling added
+        try:
             # wait for download request
             if not self.__waitForDownloadRequest(s):  # Cancel
-                return # TODO anything else to clean up here?
-
+                return
             # received Ready from client, let's send the file
             self.__sendFileChunks(path, s)
+        except CloseConnectionException as ce:
+            raise ce
         except Exception as e:
-            traceback.print_exception(*sys.exc_info())
-            print(e)
+            raise CloseConnectionException(str(e))

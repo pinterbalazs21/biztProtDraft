@@ -12,6 +12,8 @@ from protocols.common.utils import getHash
 
 
 class ServerLoginProtocol:
+    loginReqList = []
+
     def __init__(self, MTP):
         self.loginHash = ''
         self.MTP = MTP
@@ -43,12 +45,18 @@ class ServerLoginProtocol:
         # decrypting msg using the tk
         msg = rawMSG[:-256]
         loginReq = self.MTP.decryptAndVerify(msg, tk)
+        self.__filterDuplicate(loginReq)
+        ServerLoginProtocol.loginReqList.append(loginReq)
         return loginReq, tk
 
     def __createFinalKey(self, ikey, salt):
         print("Final key constructed:")
         key = HKDF(ikey, 32, salt, SHA256)
         self.MTP.setFinalKey(key)
+
+    def __filterDuplicate(self, req):
+        if req in ServerLoginProtocol.loginReqList:
+            raise CloseConnectionException("Duplicated request!")
 
     def __splitLoginRequest(self, loginRequest):
         data = loginRequest.decode("utf-8").splitlines()
@@ -72,7 +80,6 @@ class ServerLoginProtocol:
         currentTime = time.time_ns()
         if not (currentTime - window / 2) < timeStamp & timeStamp < (currentTime + window / 2):
             raise CloseConnectionException("Wrong timestamp")
-        # TODO Preferably, the server should also check if the same request was not received in another connection (with another client) within the acceptance time window around the current time at the server.
 
     def __createHash(self, pwd, salt):
         pwdhash = scrypt(pwd, salt, 16, N=2 ** 14, r=8, p=1) # don't believe the warning - salt should be bytes

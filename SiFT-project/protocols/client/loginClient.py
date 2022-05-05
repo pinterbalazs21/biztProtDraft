@@ -64,15 +64,9 @@ class ClientLoginProtocol:
         pwd = input()
         return username, pwd
 
-    # TODO MTP part of message should be handled by mtp
     def __receiveConnectionConfirmation(self, s, client_random, tk):
-        header = s.recv(16)
-        MTPdata_size = header[4:6]
+        header, tail = self.MTP.waitForMessage(s)
         msgType = header[2:4]
-        len = int.from_bytes(MTPdata_size, byteorder='big')
-        if (len == 0):
-            raise CloseConnectionException("Length of connection confirmation is 0")
-        tail = s.recv(len - 16)
         if msgType == b'\x00\x10':
             payload = self.__decryptLoginResponse(tk, header + tail)
             server_random = payload[65:]

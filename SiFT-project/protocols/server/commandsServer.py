@@ -67,7 +67,6 @@ class ServerCommandsProtocol:
                 print("Sending success")
             except Exception as error:
                 self.encryptCommandRes(conn, command, 'failure', str(error))
-
         elif command == "chd": # 1 args
             print("command request: chd")
             try:
@@ -80,7 +79,6 @@ class ServerCommandsProtocol:
                 self.encryptCommandRes(conn, command, 'success')
             except Exception as error:
                 self.encryptCommandRes(conn, command, 'failure', str(error))
-
         elif command == "mkd":  # 1 args
             print("command request: mkd")
             try:
@@ -91,7 +89,6 @@ class ServerCommandsProtocol:
                 self.encryptCommandRes(conn, command, 'success')
             except Exception as error:
                 self.encryptCommandRes(conn, command, 'failure', str(error))
-
         elif command == "del":  # 1 args
             print("command request: del")
             try:
@@ -111,7 +108,6 @@ class ServerCommandsProtocol:
             except Exception as error:
                 print("Exception" + str(error))
                 self.encryptCommandRes(conn, command, 'failure', str(error))
-
         elif command == "upl":  # 3 args
             try:
                 print("command request: upl")
@@ -128,7 +124,6 @@ class ServerCommandsProtocol:
             except Exception as error:
                 print("Exception" + str(error))
                 self.encryptCommandRes(conn, command, 'reject', str(error))
-
         elif command == "dnl":  # 1 args
             print("command request: dnl")
             try:

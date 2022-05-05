@@ -56,7 +56,7 @@ class SiFTServer:
                 print("Connection closed, thread terminated")
                 return
 
-            commandHandler = ServerCommandsProtocol(msgHandler, userRoot = os.getcwd())
+            commandHandler = ServerCommandsProtocol(msgHandler, userRoot=os.getcwd())
             downloadHandler = ServerDownloadProtocol(msgHandler)
             uploadHandler = ServerUploadProtocol(msgHandler)
             # waiting for message loop (commands protocol)

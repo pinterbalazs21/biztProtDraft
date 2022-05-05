@@ -48,7 +48,6 @@ class ServerLoginProtocol:
     def __createFinalKey(self, ikey, salt):
         print("Final key constructed:")
         key = HKDF(ikey, 32, salt, SHA256)
-        #print(key)
         self.MTP.setFinalKey(key)
 
     def __splitLoginRequest(self, loginRequest):
@@ -64,7 +63,7 @@ class ServerLoginProtocol:
         print("client random " + clientRandomStr)
         print("time " + timeStampStr)
         print("username " + username)
-        #print("pw " + pw)
+        # print("pw " + pw)
         print("-----")
         return (clientRandom, timeStampStr, username, pw)
 
@@ -103,15 +102,11 @@ class ServerLoginProtocol:
         header, msg = self.MTP.waitForMessage(s)
         msgType = header[2:4]
         # login request
-        if msgType == b'\x00\x00':  # python 3.10 tud már match-case-t (switch case helyett)
+        if msgType == b'\x00\x00':
             loginRequest, tk = self.__decryptLoginRequest(header + msg, keypair)
-            # todo check if this is right:
-            if not loginRequest:
-                raise CloseConnectionException("No(t) a login request")
-
             clientRandom, timeStampStr, username, pwd = self.__splitLoginRequest(loginRequest)
 
-            self.__checkTimestamp(timeStampStr)
+            self.__checkTimestamp(timeStampStr) # raises close connection exception in case of issues
             self.__checkUserData(username, pwd) # raises close connection exception in case of issues
 
             response, salt, server_random = self.__encryptLoginResponse(loginRequest, tk)
@@ -120,6 +115,5 @@ class ServerLoginProtocol:
             s.sendall(response)
             print("Login response sent")
         else:
-            print("Wrong request type (not login request)")
-            s.close()
+            raise CloseConnectionException("Wrong request type (not login request)")
         return

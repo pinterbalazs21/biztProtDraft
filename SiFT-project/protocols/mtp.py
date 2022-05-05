@@ -69,8 +69,6 @@ class MTP:
         # = 0, = None: derived default values
         if key is None:
             key = self.finalKey
-        # TODO Document that msg_length works like that!!
-        # TODO and on the other hand, why is there a parameter called msg_length, when should I even use that, if this part calculates the msg length for me? shouldn't THAT case be handled as the separated special case?
         if msg_length == 0:
             msg_length = 12 + len(payload) + 16
         header = self.createHeader(typ, msg_length)

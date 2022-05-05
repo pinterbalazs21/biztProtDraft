@@ -5,6 +5,7 @@ import threading
 import os
 import base64
 
+from protocols.common.closeConnectionException import CloseConnectionException
 from protocols.common.utils import getHash, getFileInfo
 from protocols.mtp import MTP
 from Crypto.PublicKey import RSA
@@ -50,19 +51,30 @@ class SiFTServer:
         uploadHandler = ServerUploadProtocol(msgHandler)
 
         with conn:
-            print(f"Connected by {addr}")
-            # accepts and verifies login request
-            # if ok: response, otherwise: close connection
+            try:
+                print(f"Connected by {addr}")
+                # accepts and verifies login request
+                # if ok: response, otherwise: close connection
+            except CloseConnectionException as ce:
+                print("Exception caught:")
+                print(ce)
+                conn.close()
+                print("Connection closed, thread terminated")
+                return
+
             loginHandler.acceptLoginRequest(conn, self.keypair)
 
             # waiting for message loop (commands protocol)
             while True:
-                #try:
-                command, args = commandHandler.acceptCommandReq(conn)
-                self.__handleCommandReq(command, args, conn, commandHandler, downloadHandler, uploadHandler)
-                #except Exception as e:
-                #    print("Connection closed, thread terminated")
-                #    return
+                try:
+                    command, args = commandHandler.acceptCommandReq(conn)
+                    self.__handleCommandReq(command, args, conn, commandHandler, downloadHandler, uploadHandler)
+                except CloseConnectionException as ce:
+                    print("Exception caught:")
+                    print(ce)
+                    conn.close()
+                    print("Connection closed, thread terminated")
+                    return
 
     def __handleCommandReq(self, command, args, conn, commandHandler, downloadHandler, uploadHandler):
         """

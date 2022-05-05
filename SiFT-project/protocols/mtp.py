@@ -52,7 +52,9 @@ class MTP:
             print("Error: Operation failed!")
             print("Processing completed.")
             sys.exit(1) #todo el kell kapni egyáltalán?
-        #print("Operation was successful: message is intact, content is decrypted.")
+        print("Operation was successful: message is intact, content is decrypted.")
+        print("payload:")
+        print(payload)
         return payload
 
     def encryptAndAuth(self, typ, payload, msg_length = 0, key = None):
@@ -62,6 +64,8 @@ class MTP:
         :param msg_length: length of the entire message, including header, in bytes, in big endian
         :return: encrypted message
         """
+        print("payload to be encrypted:")
+        print(payload)
         # = 0, = None: derived default values
         if key is None:
             key = self.finalKey

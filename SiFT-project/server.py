@@ -48,14 +48,13 @@ class SiFTServer:
                 print(f"Connected by {addr}")
                 # accepts and verifies login request
                 # if ok: response, otherwise: close connection
+                loginHandler.acceptLoginRequest(conn, self.keypair)
             except CloseConnectionException as ce:
-                print("Exception caught:")
+                print("Close Connection Exception caught:")
                 print(ce)
                 conn.close()
                 print("Connection closed, thread terminated")
                 return
-
-            loginHandler.acceptLoginRequest(conn, self.keypair)
 
             commandHandler = ServerCommandsProtocol(msgHandler, userRoot = os.getcwd())
             downloadHandler = ServerDownloadProtocol(msgHandler)
@@ -66,7 +65,7 @@ class SiFTServer:
                     command, args = commandHandler.acceptCommandReq(conn)
                     self.__handleCommandReq(command, args, conn, commandHandler, downloadHandler, uploadHandler)
                 except CloseConnectionException as ce:
-                    print("Exception caught:")
+                    print("Close Connection Exception caught:")
                     print(ce)
                     conn.close()
                     print("Connection closed, thread terminated")

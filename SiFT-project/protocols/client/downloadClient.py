@@ -5,6 +5,7 @@ and it must only be used by the client after receiving an 'accept' response to a
 '''
 import os.path
 
+from protocols.common.closeConnectionException import CloseConnectionException
 from protocols.common.utils import getHash
 
 
@@ -29,8 +30,7 @@ class ClientDownloadProtocol:
         msgType = header[2:4]
         payload = self.MTP.decryptAndVerify(header + msg)
         if msgType != b'\x03\x10' and msgType != b'\x03\x11':
-            s.close()
-            raise ValueError("Wrong message type: should be 03 10 or 03 10")
+            raise CloseConnectionException("Wrong message type: " + msgType + "instead of 03 00 or 03 10")
         return msgType, payload
 
     def __receiveAndSaveFile(self, filename, receivedFileHash, s):
@@ -50,16 +50,10 @@ class ClientDownloadProtocol:
         file = open(filename, "r")
         textFile = file.read().encode("utf-8")
         downloadedFileHash = getHash(textFile)
-        if downloadedFileHash != receivedFileHash:
-            print("Hash faulty, closing connection!")
-            s.close()
-            file.close()
-            os.remove(filename)
-            raise Exception('WRONG HASH!')
         print("File downloaded successfully, checking hash...")
+        if downloadedFileHash != receivedFileHash:
+            raise CloseConnectionException("Hash faulty, closing connection!")
         file.close()
-
-
 
     def executeDownloadProtocol(self, filename, filehash, s):
         # file has to be saved into the current working directory, so path is removed here

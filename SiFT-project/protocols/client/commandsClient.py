@@ -64,7 +64,7 @@ class ClientCommandsProtocol:
         s.sendall(msg)
         self.__saveHash(msg)
 
-    def __decryptCommandResponseMsg(self, rawMSG):#todo raw msg hash-e kell?
+    def __decryptCommandResponseMsg(self, rawMSG):
         decryptedPayload = self.MTP.decryptAndVerify(rawMSG).decode("utf-8")
         commandList = decryptedPayload.splitlines()
         commandTypeStr = commandList[0]

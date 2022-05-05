@@ -55,8 +55,8 @@ class MTP:
             raise CloseConnectionException("Error: decryption of message failed: " + str(e))
         print("Operation was successful: message is intact, content is decrypted.")
         # TODO delete this if not debugging
-        print("payload:")
-        print(payload)
+        # print("payload:")
+        # print(payload)
         return payload
 
     def encryptAndAuth(self, typ, payload, msg_length = 0, key = None):
@@ -67,8 +67,8 @@ class MTP:
         :return: encrypted message
         """
         # TODO delete this if not debugging
-        print("payload to be encrypted:")
-        print(payload)
+        # print("payload to be encrypted:")
+        # print(payload)
         # = 0, = None: derived default values
         if key is None:
             key = self.finalKey

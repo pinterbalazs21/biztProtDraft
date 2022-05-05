@@ -15,7 +15,7 @@ from protocols.server.uploadServer import ServerUploadProtocol
 class SiFTServer:
     def __init__(self, port=5150):
         self.port = port
-        self.host = "localhost"
+        self.host = "localhost" # TODO put IP of server here
         #generating public and private key
         self.keypair = RSA.generate(2048)
         self.pubKey = self.keypair.public_key()

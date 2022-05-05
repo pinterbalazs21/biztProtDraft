@@ -11,7 +11,7 @@ from protocols.mtp import MTP
 class SiFTClient():
     def __init__(self, port=5150):
         self.port = port
-        self.host = "localhost"
+        self.host = "localhost" # TODO put IP of server here
         self.key = ""
         self.msgHandler = MTP()
         self.loginHandler = ClientLoginProtocol(self.msgHandler)

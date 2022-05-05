@@ -63,7 +63,7 @@ class SiFTServer:
             while True:
                 try:
                     command, args = commandHandler.acceptCommandReq(conn)
-                    self.__handleCommandReq(command, args, conn, commandHandler, downloadHandler, uploadHandler)
+                    commandHandler.handleCommandReq(command, args, conn, downloadHandler, uploadHandler)
                 except CloseConnectionException as ce:
                     print("Close Connection Exception caught:")
                     print(ce)

@@ -111,7 +111,7 @@ class ServerCommandsProtocol:
         elif command == "upl":  # 3 args
             try:
                 print("command request: upl")
-                size = int(args[1])#todo ezekkel semmit nem kell csinálni
+                size = int(args[1]) # TODO ezekkel semmit nem kell csinálni - spec szerint ja, érdekes
                 hash = args[2]
                 path = os.path.normpath(os.path.join(self.currentWD, args[0]))
                 if not checkDir(self.userRoot, path):

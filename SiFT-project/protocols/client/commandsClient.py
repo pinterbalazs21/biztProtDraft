@@ -2,6 +2,7 @@ import base64
 import os
 from Crypto.Hash import SHA256
 
+from protocols.common.closeConnectionException import CloseConnectionException
 from protocols.common.utils import getFileInfo
 
 
@@ -76,14 +77,10 @@ class ClientCommandsProtocol:
         header, msg = self.MTP.waitForMessage(s)
         msgType = header[2:4]
         if msgType != b'\x01\x10':
-            raise Exception("Wrong message type!")
-            s.close()
-            return
+            raise CloseConnectionException("Wrong message type: " + msgType + " instead of 01 10")
         command, args = self.__decryptCommandResponseMsg(header + msg)
         if self.latestHash != args[0]:
-            s.close()
-            print("connection closed due to wrong hash")
-            exit(1)
+            raise CloseConnectionException("Wrong hash in command response")
         commandsToFail = ['pwd', 'lst', 'chd', 'mkd', 'del']
         commandsToReject = ['upl', 'dnl']
         if command in commandsToReject:
@@ -93,7 +90,6 @@ class ClientCommandsProtocol:
             elif args[1] == 'accept':
                 self.__printResult(command, *args)
                 return True
-
         elif command in commandsToFail:
             if args[1] == 'failure':
                 print("command " + command + " failed: " + args[2])
@@ -102,8 +98,7 @@ class ClientCommandsProtocol:
                 self.__printResult(command, *args)
                 return True
         else:
-            s.close()
-            return False
+            raise CloseConnectionException("Command in command response unknown: " + command)
 
     def __printResult(self, command, *args):
         if command == "pwd":
@@ -121,10 +116,8 @@ class ClientCommandsProtocol:
             print("Hash of the file to be downloaded is: ", self.latestFilesize)
             print("Size of the file to be downloaded is: ", self.latestFilehash)
 
-
     def commandHandling(self, rawCommmand, s, downloadHandler, uploadHandler):
         command = rawCommmand.split()[0]
-        # commands = ['pwd', 'lst', 'chd', 'mkd', 'del', 'upl', 'dnl']
         if command == 'pwd' and len(rawCommmand.split()) == 1:
             self.sendPWDReq(s)
             self.waitForCommandResponse(s)

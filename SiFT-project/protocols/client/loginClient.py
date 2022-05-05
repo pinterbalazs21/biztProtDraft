@@ -76,7 +76,7 @@ class ClientLoginProtocol:
             self.__createFinalKey(ikey, salt)
             print("Connection established")
             return
-        raise CloseConnectionException("Wrong message type (msgType " + msgType + " instead of 00 10")
+        raise CloseConnectionException("Wrong message type: " + msgType + " instead of 00 10")
 
     def executeLogin(self, s):
         """

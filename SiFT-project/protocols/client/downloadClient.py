@@ -30,7 +30,7 @@ class ClientDownloadProtocol:
         payload = self.MTP.decryptAndVerify(header + msg)
         if msgType != b'\x03\x10' and msgType != b'\x03\x11':
             s.close()
-            raise ValueError("Wrong message type (should be 03 10 or 03 10): ")
+            raise ValueError("Wrong message type: should be 03 10 or 03 10")
         return msgType, payload
 
     def __receiveAndSaveFile(self, filename, receivedFileHash, s):

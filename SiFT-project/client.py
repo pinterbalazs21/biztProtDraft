@@ -46,6 +46,5 @@ class SiFTClient():
                     print("Connection closed, thread terminated")
                     return
 
-
 client = SiFTClient()
 client.connect()

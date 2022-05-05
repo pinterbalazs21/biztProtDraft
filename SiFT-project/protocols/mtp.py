@@ -61,7 +61,7 @@ class MTP:
         """
         Encryption and authentication service of MTP
         :param typ: 2 byte message type field (see protocol description)
-        :param msg_length: length of the entire message, including header, in bytes, in big endian
+        :param msg_length: don't use it if you need the length to be: of the entire message, including header, in bytes, in big endian
         :return: encrypted message
         """
         print("payload to be encrypted:")

@@ -2,6 +2,9 @@ import sys
 from Crypto.Cipher import AES
 from Crypto import Random
 
+from protocols.common.closeConnectionException import CloseConnectionException
+
+
 class MTP:
     def __init__(self):
         self.sqn = 1
@@ -49,10 +52,9 @@ class MTP:
         try:
             payload = AE.decrypt_and_verify(encrypted_payload, authtag)
         except Exception as e:
-            print("Error: Operation failed!")
-            print("Processing completed.")
-            sys.exit(1) #todo el kell kapni egyáltalán?
+            raise CloseConnectionException("Error: decryption of message failed!")
         print("Operation was successful: message is intact, content is decrypted.")
+        # TODO delete this if not debugging
         print("payload:")
         print(payload)
         return payload
@@ -64,6 +66,7 @@ class MTP:
         :param msg_length: don't use it if you need the length to be: of the entire message, including header, in bytes, in big endian
         :return: encrypted message
         """
+        # TODO delete this if not debugging
         print("payload to be encrypted:")
         print(payload)
         # = 0, = None: derived default values
@@ -72,7 +75,7 @@ class MTP:
         if msg_length == 0:
             msg_length = 12 + len(payload) + 16
         header = self.createHeader(typ, msg_length)
-        nonce = header[6:14] #sqn:[6:8], rnd = [8:14]
+        nonce = header[6:14] # sqn:[6:8], rnd = [8:14]
         AE = AES.new(key, AES.MODE_GCM, nonce=nonce, mac_len=12)
         AE.update(header)
         encrypted_payload, authtag = AE.encrypt_and_digest(payload)
@@ -84,13 +87,11 @@ class MTP:
         MTPdata_size = header[4:6]
         len = int.from_bytes(MTPdata_size, byteorder='big')
         if (len == 0):
-            s.close()
-            print("len = 0, connection closed")
-            raise ValueError("0 Length")
+            raise CloseConnectionException("Header length of message is 0")
         return header, len
 
     def waitForMessage(self, s):
         header, len = self.waitForHeader(s)
-        #msgType = header[2:4]
+        # msgType would be header[2:4]
         msg = s.recv(len - 16)
-        return header, msg#, msgType
+        return header, msg #, msgType

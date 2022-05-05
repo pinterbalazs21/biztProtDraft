@@ -1,5 +1,4 @@
-from Crypto.Hash import SHA256
-
+from protocols.common.closeConnectionException import CloseConnectionException
 from protocols.common.utils import *
 import os
 import base64
@@ -13,7 +12,7 @@ class ServerCommandsProtocol:
     # creates command response body
     def __createCommandRes(self, type, *args):
         response = type + "\n" + self.latestHash
-        if args:# has at least 1 param
+        if args:  # has at least 1 param
             for resp in args:
                 response = response + "\n" + resp
         return response.encode("utf-8")
@@ -36,9 +35,7 @@ class ServerCommandsProtocol:
         header, msg = self.MTP.waitForMessage(s)
         msgType = header[2:4]
         if msgType != b'\x01\x00':
-            print("Wrong message type")
-            s.close()
-            return
+            raise CloseConnectionException("Wrong message type: " + msgType + "instead of 01 00")
         rawMSG = header + msg
         self.latestHash = getHash(rawMSG)
         command, args = self.decryptCommandMsg(rawMSG)
@@ -60,10 +57,10 @@ class ServerCommandsProtocol:
             print("command request: lst")
             try:
                 if not checkDir(self.userRoot, self.currentWD):
-                    raise Exception('Access denied!')#not possible to reach this
+                    raise Exception('Access denied!') # not possible to reach this
                 lstResult = os.listdir(self.currentWD)
                 lstStr = '\n'.join([str(item) for item in lstResult])
-                if not lstStr:#empty dir handling
+                if not lstStr: # empty dir handling
                     lstStr = ""
                 encodedStr = base64.b64encode(lstStr.encode('utf-8')).decode('utf-8')
                 self.encryptCommandRes(conn, command, 'success', encodedStr)

@@ -48,7 +48,10 @@ class MTP:
         self.rcvsqn += 1
         #print("Sequence number verification is successful.")
         AE = AES.new(key, AES.MODE_GCM, nonce=nonce, mac_len=12)
+        print(header.hex())
+
         AE.update(header)
+        #print(authtag)
         try:
             payload = AE.decrypt_and_verify(encrypted_payload, authtag)
         except Exception as e:
@@ -67,18 +70,22 @@ class MTP:
         :return: encrypted message
         """
         # TODO delete this if not debugging
-        # print("payload to be encrypted:")
-        # print(payload)
+        print("payload to be encrypted:")
+        print(payload)
+        print("-----")
         # = 0, = None: derived default values
         if key is None:
             key = self.finalKey
         if msg_length == 0:
             msg_length = 12 + len(payload) + 16
+        print(self.finalKey)
         header = self.createHeader(typ, msg_length)
         nonce = header[6:14] # sqn:[6:8], rnd = [8:14]
         AE = AES.new(key, AES.MODE_GCM, nonce=nonce, mac_len=12)
         AE.update(header)
         encrypted_payload, authtag = AE.encrypt_and_digest(payload)
+        print(header)
+        print(payload)
         self.sqn += 1
         return header + encrypted_payload + authtag # msg
 

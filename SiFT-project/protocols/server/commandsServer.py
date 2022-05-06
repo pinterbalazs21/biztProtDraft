@@ -24,12 +24,12 @@ class ServerCommandsProtocol:
 
     def decryptCommandMsg(self, rawMSG):
         decryptedPayload = self.MTP.decryptAndVerify(rawMSG).decode("utf-8")
-        commandList = decryptedPayload.splitlines()
+        commandList = decryptedPayload.split("\n")
         commandTypeStr = commandList[0]
         args = ()
         if len(commandList) > 1:
             args = commandList[1:]
-        return commandTypeStr, args
+        return commandTypeStr, args, decryptedPayload
 
     def acceptCommandReq(self, s):
         header, msg = self.MTP.waitForMessage(s)
@@ -37,8 +37,12 @@ class ServerCommandsProtocol:
         if msgType != b'\x01\x00':
             raise CloseConnectionException("Wrong message type: " + msgType + "instead of 01 00")
         rawMSG = header + msg
-        self.latestHash = getHash(rawMSG)
-        command, args = self.decryptCommandMsg(rawMSG)
+        payload = msg[:-12]
+        print(rawMSG)
+        command, args, payload = self.decryptCommandMsg(rawMSG)
+        self.latestHash = getHash(payload.encode("utf-8"))
+        print("payload: ", self.latestHash)
+        print("payload hex: ", self.latestHash)
         return command, args
 
 
@@ -61,7 +65,7 @@ class ServerCommandsProtocol:
                 if not checkDir(self.userRoot, self.currentWD):
                     raise Exception('Access denied!') # not possible to reach this
                 lstResult = os.listdir(self.currentWD)
-                lstStr = '\n'.join([str(item) for item in lstResult])
+                lstStr = "\n".join([str(item) for item in lstResult])
                 if not lstStr: # empty dir handling
                     lstStr = ""
                 encodedStr = base64.b64encode(lstStr.encode('utf-8')).decode('utf-8')

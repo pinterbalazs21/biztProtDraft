@@ -25,6 +25,7 @@ class ClientLoginProtocol:
     def __createFinalKey(self, ikey, salt):
         print("Final key constructed")
         key = HKDF(ikey, 32, salt, SHA256)
+        print(key.hex())
         self.MTP.setFinalKey(key)
 
     def __saveHash(self, payload):
@@ -34,7 +35,7 @@ class ClientLoginProtocol:
 
     def __createLoginRequest(self, username, password):
         clientRandom = Random.get_random_bytes(16).hex()
-        loginPayload = str(time.time_ns()) + '\n' + username + '\n' + password + '\n' + clientRandom
+        loginPayload = str(time.time_ns()) + "\n" + username + "\n" + password + "\n" + clientRandom
 
         loginPayload = loginPayload.encode("utf-8")
         clientRandom = clientRandom.encode("utf-8")
@@ -71,8 +72,13 @@ class ClientLoginProtocol:
             payload = self.__decryptLoginResponse(tk, header + tail)
             server_random = payload[65:]
             # final symmetric key:
+            print("salt: ", self.loginHash)
+            client_random = bytes.fromhex(client_random.decode("utf-8"))
+            server_random = bytes.fromhex(server_random.decode("utf-8"))
+            print("client random: ", client_random.hex())
+            print("server random: ", server_random.hex())
             ikey = client_random + server_random
-            salt = payload[:64]
+            salt = bytes.fromhex(self.loginHash)
             self.__createFinalKey(ikey, salt)
             print("Connection established")
             return

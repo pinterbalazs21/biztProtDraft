@@ -22,7 +22,7 @@ class ClientUploadProtocol:
         if msgType != b'\x02\x10':
             raise CloseConnectionException("Wrong message type: " + msgType + "instead of 02 10")
         msg = self.MTP.decryptAndVerify(header+tail).decode("utf-8")
-        msgPayload = msg.splitlines()
+        msgPayload = msg.split("\n")
         receivedFileHash = msgPayload[0]
         print(receivedFileHash)
         receivedFileSize = int(msgPayload[1])

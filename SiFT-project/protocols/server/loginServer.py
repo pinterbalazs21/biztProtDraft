@@ -25,7 +25,7 @@ class ServerLoginProtocol:
     def __encryptLoginResponse(self, payload, tk):
         print("Encrypting login response")
         loginRes = self.__createLoginResponse(payload)
-        hash = loginRes[0:64]
+        hash = bytes.fromhex(loginRes[0:64].decode("utf-8"))
         rand = loginRes[65:]
         msgLen = 12 + len(loginRes) + 16
         response = self.MTP.encryptAndAuth(b'\x00\x10', loginRes, msgLen, tk)
@@ -33,7 +33,7 @@ class ServerLoginProtocol:
 
     def __createLoginResponse(self, receivedPayloadStr):
         rand = Random.get_random_bytes(16).hex()
-        strResponse = getHash(receivedPayloadStr) + '\n' + rand  # type: str
+        strResponse = getHash(receivedPayloadStr) + "\n" + rand  # type: str
         return strResponse.encode("utf-8")  # request hash + random bytes,
 
     def __decryptLoginRequest(self, rawMSG, keypair):
@@ -52,6 +52,7 @@ class ServerLoginProtocol:
     def __createFinalKey(self, ikey, salt):
         print("Final key constructed:")
         key = HKDF(ikey, 32, salt, SHA256)
+        print(key.hex())
         self.MTP.setFinalKey(key)
 
     def __filterDuplicate(self, req):
@@ -59,7 +60,7 @@ class ServerLoginProtocol:
             raise CloseConnectionException("Duplicated request!")
 
     def __splitLoginRequest(self, loginRequest):
-        data = loginRequest.decode("utf-8").splitlines()
+        data = loginRequest.decode("utf-8").split("\n")
         timeStampStr = data[0]
         username = data[1]
         pw = data[2]
@@ -76,6 +77,8 @@ class ServerLoginProtocol:
         return (clientRandom, timeStampStr, username, pw)
 
     def __checkTimestamp(self, timeStampStr, window=1.2E11):
+        print("0000000000000000000000000")
+        print(timeStampStr)
         timeStamp = int(timeStampStr)
         currentTime = time.time_ns()
         if not (currentTime - window / 2) < timeStamp & timeStamp < (currentTime + window / 2):
@@ -111,13 +114,18 @@ class ServerLoginProtocol:
         # login request
         if msgType == b'\x00\x00':
             loginRequest, tk = self.__decryptLoginRequest(header + msg, keypair)
-            clientRandom, timeStampStr, username, pwd = self.__splitLoginRequest(loginRequest)
+            client_random, timeStampStr, username, pwd = self.__splitLoginRequest(loginRequest)
 
             self.__checkTimestamp(timeStampStr) # raises close connection exception in case of issues
             self.__checkUserData(username, pwd) # raises close connection exception in case of issues
 
             response, salt, server_random = self.__encryptLoginResponse(loginRequest, tk)
-            ikey = clientRandom + server_random
+            client_random = bytes.fromhex(client_random.decode("utf-8"))
+            server_random = bytes.fromhex(server_random.decode("utf-8"))
+            ikey = client_random + server_random
+            print("salt: ", salt)
+            print("client random: ", client_random.hex())
+            print("server random: ", server_random.hex())
             self.__createFinalKey(ikey, salt)
             s.sendall(response)
             print("Login response sent")

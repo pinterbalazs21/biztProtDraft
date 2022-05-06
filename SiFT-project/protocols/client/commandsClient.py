@@ -21,52 +21,54 @@ class ClientCommandsProtocol:
 
     def __encryptCommandReq(self, commandType, *args):
         payload = self.__createCommandReq(commandType, *args)
-        return self.MTP.encryptAndAuth(b'\x01\x00', payload)
+        return self.MTP.encryptAndAuth(b'\x01\x00', payload), payload
 
     def __saveHash(self, msg):
+        print("payload: ", msg)
+        print("payload hex: ", msg.hex())
         h = SHA256.new()
         h.update(msg)
         self.latestHash = h.hexdigest()
 
     def sendPWDReq(self, s):
-        msg = self.__encryptCommandReq("pwd")
+        msg, payload = self.__encryptCommandReq("pwd")
         s.sendall(msg)
-        self.__saveHash(msg)
+        self.__saveHash(payload)
 
     def sendLSTReq(self, s):
-        msg = self.__encryptCommandReq("lst")
+        msg, payload = self.__encryptCommandReq("lst")
         s.sendall(msg)
-        self.__saveHash(msg)
+        self.__saveHash(payload)
 
     def sendCHDReq(self, s, dir):
-        msg = self.__encryptCommandReq("chd", dir)
+        msg, payload = self.__encryptCommandReq("chd", dir)
         s.sendall(msg)
-        self.__saveHash(msg)
+        self.__saveHash(payload)
 
     def sendMKDReq(self, s, folderName):
-        msg = self.__encryptCommandReq("mkd", folderName)
+        msg, payload = self.__encryptCommandReq("mkd", folderName)
         s.sendall(msg)
-        self.__saveHash(msg)
+        self.__saveHash(payload)
 
     def sendDELReq(self, s, fName):
-        msg = self.__encryptCommandReq("del", fName)
+        msg, payload = self.__encryptCommandReq("del", fName)
         s.sendall(msg)
-        self.__saveHash(msg)
+        self.__saveHash(payload)
 
     def sendUPLReq(self, s, fName):
         fileHash, fileSize = getFileInfo(fName)
-        msg = self.__encryptCommandReq("upl", os.path.basename(fName), fileSize, fileHash)
+        msg, payload = self.__encryptCommandReq("upl", os.path.basename(fName), fileSize, fileHash)
         s.sendall(msg)
-        self.__saveHash(msg)
+        self.__saveHash(payload)
 
     def sendDNLReq(self, s, fName):
-        msg = self.__encryptCommandReq("dnl", fName)
+        msg, payload = self.__encryptCommandReq("dnl", fName)
         s.sendall(msg)
-        self.__saveHash(msg)
+        self.__saveHash(payload)
 
     def __decryptCommandResponseMsg(self, rawMSG):
         decryptedPayload = self.MTP.decryptAndVerify(rawMSG).decode("utf-8")
-        commandList = decryptedPayload.splitlines()
+        commandList = decryptedPayload.split("\n")
         commandTypeStr = commandList[0]
         args = ()
         if len(commandList) > 1:
@@ -79,6 +81,8 @@ class ClientCommandsProtocol:
         if msgType != b'\x01\x10':
             raise CloseConnectionException("Wrong message type: " + msgType + " instead of 01 10")
         command, args = self.__decryptCommandResponseMsg(header + msg)
+        print("hash: ", args[0])
+        print("latest hash: ", self.latestHash)
         if self.latestHash != args[0]:
             raise CloseConnectionException("Wrong hash in command response")
         commandsToFail = ['pwd', 'lst', 'chd', 'mkd', 'del']

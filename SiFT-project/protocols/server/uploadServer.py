@@ -38,7 +38,7 @@ class ServerUploadProtocol:
 
     def __createAndEncryptUploadResponse(self, filename, s):
         fileHash, fileSize = getFileInfo(filename)
-        resPayload = str(fileHash + '\n' + str(fileSize)).encode("utf-8")
+        resPayload = str(fileHash + "\n" + str(fileSize)).encode("utf-8")
 
         msg = self.MTP.encryptAndAuth(b'\x02\x10', resPayload)
         return msg

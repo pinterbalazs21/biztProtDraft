@@ -12,11 +12,11 @@ class MTP:
         self.finalKey = None
         print('MTP_INIT')
 
-    def setFinalKey(self, finalKey):
+    def set_final_key(self, finalKey):
         print("MTP final key set")
         self.finalKey = finalKey
 
-    def createHeader(self, typ, msg_length):
+    def create_header(self, typ, msg_length):
         # create header
         header_version = b'\x01\x00'  # v1.0
         header_type = typ  # 2B, 10 possible value. 1st byte: interaction , 2nd byte: 1st nibble: request or response 2nd nibble: sub-types
@@ -26,7 +26,7 @@ class MTP:
         header_rsv = b'\x00\x00'
         return header_version + header_type + header_length + header_sqn + header_rnd + header_rsv
 
-    def decryptAndVerify(self, msg, key=None): # nonce: sqn + rnd
+    def decrypt_and_verify(self, msg, key=None): # nonce: sqn + rnd
         if key is None:
             key = self.finalKey
         header = msg[0:16]
@@ -62,7 +62,7 @@ class MTP:
         # print(payload)
         return payload
 
-    def encryptAndAuth(self, typ, payload, msg_length = 0, key = None):
+    def encrypt_and_auth(self, typ, payload, msg_length = 0, key = None):
         """
         Encryption and authentication service of MTP
         :param typ: 2 byte message type field (see protocol description)
@@ -79,7 +79,7 @@ class MTP:
         if msg_length == 0:
             msg_length = 12 + len(payload) + 16
         print(self.finalKey)
-        header = self.createHeader(typ, msg_length)
+        header = self.create_header(typ, msg_length)
         nonce = header[6:14] # sqn:[6:8], rnd = [8:14]
         AE = AES.new(key, AES.MODE_GCM, nonce=nonce, mac_len=12)
         AE.update(header)
@@ -89,7 +89,7 @@ class MTP:
         self.sqn += 1
         return header + encrypted_payload + authtag # msg
 
-    def waitForHeader(self, s):
+    def wait_for_header(self, s):
         header = s.recv(16)
         MTPdata_size = header[4:6]
         len = int.from_bytes(MTPdata_size, byteorder='big')
@@ -97,8 +97,8 @@ class MTP:
             raise CloseConnectionException("Header length of message is 0")
         return header, len
 
-    def waitForMessage(self, s):
-        header, len = self.waitForHeader(s)
+    def wait_for_message(self, s):
+        header, len = self.wait_for_header(s)
         # msgType would be header[2:4]
         msg = s.recv(len - 16)
         return header, msg #, msgType

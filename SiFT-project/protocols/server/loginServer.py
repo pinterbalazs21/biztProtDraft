@@ -8,7 +8,7 @@ from Crypto.Protocol.KDF import HKDF
 from Crypto.Protocol.KDF import scrypt
 
 from protocols.common.closeConnectionException import CloseConnectionException
-from protocols.common.utils import getHash
+from protocols.common.utils import get_hash
 
 
 class ServerLoginProtocol:
@@ -22,21 +22,21 @@ class ServerLoginProtocol:
         '''
         self.userdatafile = 'userdata.csv'
 
-    def __encryptLoginResponse(self, payload, tk):
+    def __encrypt_login_response(self, payload, tk):
         print("Encrypting login response")
-        loginRes = self.__createLoginResponse(payload)
+        loginRes = self.__create_login_response(payload)
         hash = bytes.fromhex(loginRes[0:64].decode("utf-8"))
         rand = loginRes[65:]
         msgLen = 12 + len(loginRes) + 16
-        response = self.MTP.encryptAndAuth(b'\x00\x10', loginRes, msgLen, tk)
+        response = self.MTP.encrypt_and_auth(b'\x00\x10', loginRes, msgLen, tk)
         return response, hash, rand
 
-    def __createLoginResponse(self, receivedPayloadStr):
+    def __create_login_response(self, receivedPayloadStr):
         rand = Random.get_random_bytes(16).hex()
-        strResponse = getHash(receivedPayloadStr) + "\n" + rand  # type: str
+        strResponse = get_hash(receivedPayloadStr) + "\n" + rand  # type: str
         return strResponse.encode("utf-8")  # request hash + random bytes,
 
-    def __decryptLoginRequest(self, rawMSG, keypair):
+    def __decrypt_login_request(self, rawMSG, keypair):
         # accepts and verifies loginRequests
         # decrypting encrypted temporary key
         etk = rawMSG[-256:]
@@ -44,22 +44,22 @@ class ServerLoginProtocol:
         tk = RSAcipher.decrypt(etk)
         # decrypting msg using the tk
         msg = rawMSG[:-256]
-        loginReq = self.MTP.decryptAndVerify(msg, tk)
-        self.__filterDuplicate(loginReq)
+        loginReq = self.MTP.decrypt_and_verify(msg, tk)
+        self.__filter_duplicate(loginReq)
         ServerLoginProtocol.loginReqList.append(loginReq)
         return loginReq, tk
 
-    def __createFinalKey(self, ikey, salt):
+    def __create_final_key(self, ikey, salt):
         print("Final key constructed:")
         key = HKDF(ikey, 32, salt, SHA256)
         print(key.hex())
-        self.MTP.setFinalKey(key)
+        self.MTP.set_final_key(key)
 
-    def __filterDuplicate(self, req):
+    def __filter_duplicate(self, req):
         if req in ServerLoginProtocol.loginReqList:
             raise CloseConnectionException("Duplicated request!")
 
-    def __splitLoginRequest(self, loginRequest):
+    def __split_login_request(self, loginRequest):
         data = loginRequest.decode("utf-8").split("\n")
         timeStampStr = data[0]
         username = data[1]
@@ -76,7 +76,7 @@ class ServerLoginProtocol:
         print("-----")
         return (clientRandom, timeStampStr, username, pw)
 
-    def __checkTimestamp(self, timeStampStr, window=1.2E11):
+    def __check_timestamp(self, timeStampStr, window=1.2E11):
         print("0000000000000000000000000")
         print(timeStampStr)
         timeStamp = int(timeStampStr)
@@ -84,11 +84,11 @@ class ServerLoginProtocol:
         if not (currentTime - window / 2) < timeStamp & timeStamp < (currentTime + window / 2):
             raise CloseConnectionException("Wrong timestamp")
 
-    def __createHash(self, pwd, salt):
+    def __create_hash(self, pwd, salt):
         pwdhash = scrypt(pwd, salt, 16, N=2 ** 14, r=8, p=1) # don't believe the warning - salt should be bytes
         return pwdhash
 
-    def __checkUserData(self, username, password):
+    def __check_user_data(self, username, password):
         with open(self.userdatafile, newline='') as csvfile:
             userdata = csv.reader(csvfile, delimiter=',')
             try:
@@ -98,7 +98,7 @@ class ServerLoginProtocol:
                     rSalt = bytes.fromhex(row[2])
 
                     if rUsername == username:
-                        pwdHash = self.__createHash(password, rSalt)
+                        pwdHash = self.__create_hash(password, rSalt)
                         if rPwdHash != pwdHash:
                             raise CloseConnectionException('Error: Wrong password')
                         else:
@@ -108,25 +108,25 @@ class ServerLoginProtocol:
                 print(ve)
                 raise CloseConnectionException('Error: Cannot import password from file ' + self.userdatafile)
 
-    def acceptLoginRequest(self, s, keypair):
-        header, msg = self.MTP.waitForMessage(s)
+    def accept_login_request(self, s, keypair):
+        header, msg = self.MTP.wait_for_message(s)
         msgType = header[2:4]
         # login request
         if msgType == b'\x00\x00':
-            loginRequest, tk = self.__decryptLoginRequest(header + msg, keypair)
-            client_random, timeStampStr, username, pwd = self.__splitLoginRequest(loginRequest)
+            loginRequest, tk = self.__decrypt_login_request(header + msg, keypair)
+            client_random, timeStampStr, username, pwd = self.__split_login_request(loginRequest)
 
-            self.__checkTimestamp(timeStampStr) # raises close connection exception in case of issues
-            self.__checkUserData(username, pwd) # raises close connection exception in case of issues
+            self.__check_timestamp(timeStampStr) # raises close connection exception in case of issues
+            self.__check_user_data(username, pwd) # raises close connection exception in case of issues
 
-            response, salt, server_random = self.__encryptLoginResponse(loginRequest, tk)
+            response, salt, server_random = self.__encrypt_login_response(loginRequest, tk)
             client_random = bytes.fromhex(client_random.decode("utf-8"))
             server_random = bytes.fromhex(server_random.decode("utf-8"))
             ikey = client_random + server_random
             print("salt: ", salt)
             print("client random: ", client_random.hex())
             print("server random: ", server_random.hex())
-            self.__createFinalKey(ikey, salt)
+            self.__create_final_key(ikey, salt)
             s.sendall(response)
             print("Login response sent")
         else:

@@ -13,7 +13,7 @@ userData = {
 userdatafile = '../userdata.csv'
 
 
-def createHash(pwd):  # same as in server login protocol, but generates salt itself
+def create_hash(pwd):  # same as in server login protocol, but generates salt itself
     salt = get_random_bytes(16)
     pwdhash = scrypt(pwd, salt, 16, N=2 ** 14, r=8, p=1)
     return pwdhash, salt
@@ -22,5 +22,5 @@ def createHash(pwd):  # same as in server login protocol, but generates salt its
 with open(userdatafile, 'w', newline='') as userdatacsv:
     userdatawriter = csv.writer(userdatacsv, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
     for key in userData.keys():
-        pwdhash, salt = createHash(userData[key])
+        pwdhash, salt = create_hash(userData[key])
         userdatawriter.writerow([key, pwdhash.hex(), salt.hex()])

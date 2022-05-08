@@ -26,7 +26,7 @@ class SiFTClient():
 
             # execute login protocol
             try:
-                self.loginHandler.executeLogin(s)
+                self.loginHandler.execute_login(s)
             except CloseConnectionException as ce:
                 print("Close Connection Exception caught:")
                 print(ce)
@@ -38,7 +38,7 @@ class SiFTClient():
             while True:
                 try:
                     rawCommmand = input()
-                    self.commandHandler.commandHandling(rawCommmand, s, self.downloadHandler, self.uploadHandler)
+                    self.commandHandler.handle_command(rawCommmand, s, self.downloadHandler, self.uploadHandler)
                 except CloseConnectionException as ce:
                     print("Close Connection Exception caught:")
                     print(ce)

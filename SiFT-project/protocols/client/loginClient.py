@@ -25,7 +25,6 @@ class ClientLoginProtocol:
     def __create_final_key(self, ikey, salt):
         print("Final key constructed")
         key = HKDF(ikey, 32, salt, SHA256)
-        print(key.hex())
         self.MTP.set_final_key(key)
 
     def __save_hash(self, payload):

@@ -15,8 +15,8 @@ from protocols.server.uploadServer import ServerUploadProtocol
 class SiFTServer:
     def __init__(self, port=5150):
         self.port = port
-        self.host = "localhost" # "10.71.0.167" # TODO put IP of server here
-        with open("thyme-public.key", 'rb') as f:
+        self.host = "localhost"  # "10.71.0.167" # TODO put IP of server here
+        with open("public.key", 'rb') as f:
             pubkeystr = f.read()
             self.pubKey = RSA.import_key(pubkeystr)
         with open("private.key", 'rb') as f:

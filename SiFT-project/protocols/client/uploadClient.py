@@ -24,13 +24,9 @@ class ClientUploadProtocol:
         msg = self.MTP.decrypt_and_verify(header + tail).decode("utf-8")
         msg_payload = msg.split("\n")
         received_file_hash = msg_payload[0]
-        print(received_file_hash)
         received_file_size = int(msg_payload[1])
-        print(received_file_size)
 
         local_file_hash, local_file_size = get_file_info(filename)
-        print(local_file_hash)
-        print(local_file_size)
 
         if local_file_hash != received_file_hash:
             raise CloseConnectionException("File hash of uploaded file and local file are different! Closing connection.")

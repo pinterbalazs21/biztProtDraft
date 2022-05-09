@@ -50,9 +50,8 @@ class ServerLoginProtocol:
         return login_req, tk
 
     def __create_final_key(self, ikey, salt):
-        print("Final key constructed:")
+        print("Final key constructed")
         key = HKDF(ikey, 32, salt, SHA256)
-        print(key.hex())
         self.MTP.set_final_key(key)
 
     def __filter_duplicate(self, req):
@@ -77,8 +76,6 @@ class ServerLoginProtocol:
         return client_random, time_stamp_str, username, pw
 
     def __check_timestamp(self, timeStampStr, window=1.2E11):
-        print("0000000000000000000000000")
-        print(timeStampStr)
         time_stamp = int(timeStampStr)
         current_time = time.time_ns()
         if not (current_time - window / 2) < time_stamp & time_stamp < (current_time + window / 2):

@@ -46,7 +46,6 @@ class MTP:
             sys.exit(1)
         self.rcvsqn += 1
         ae = AES.new(key, AES.MODE_GCM, nonce=nonce, mac_len=12)
-        print(header.hex())
 
         ae.update(header)
         try:
@@ -75,14 +74,11 @@ class MTP:
             key = self.finalKey
         if msg_length == 0:
             msg_length = 12 + len(payload) + 16
-        print(self.finalKey)
         header = self.create_header(typ, msg_length)
         nonce = header[6:14]  # sqn:[6:8], rnd = [8:14]
         ae = AES.new(key, AES.MODE_GCM, nonce=nonce, mac_len=12)
         ae.update(header)
         encrypted_payload, authtag = ae.encrypt_and_digest(payload)
-        print(header)
-        print(payload)
         self.sqn += 1
         return header + encrypted_payload + authtag  # msg
 

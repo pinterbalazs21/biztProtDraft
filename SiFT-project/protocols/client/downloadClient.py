@@ -14,26 +14,26 @@ class ClientDownloadProtocol:
         self.MTP = MTP
 
     def __create_and_encrypt_download_request(self, cancel=False):
-        if (cancel):
-            dnlRequest = "Cancel".encode("utf-8")
+        if cancel:
+            dnl_request = "Cancel".encode("utf-8")
         else:
-            dnlRequest = "Ready".encode("utf-8")
-        msg = self.MTP.encrypt_and_auth(b'\x03\x00', dnlRequest)
+            dnl_request = "Ready".encode("utf-8")
+        msg = self.MTP.encrypt_and_auth(b'\x03\x00', dnl_request)
         return msg
 
     def __cancel_download(self, s):
-        encryptedDownloadRequest = self.__create_and_encrypt_download_request(cancel=True)
-        s.sendall(encryptedDownloadRequest)
+        encrypted_download_request = self.__create_and_encrypt_download_request(cancel=True)
+        s.sendall(encrypted_download_request)
 
     def __receive_next_file_chunk(self, s):
         header, msg = self.MTP.wait_for_message(s)
-        msgType = header[2:4]
+        msg_type = header[2:4]
         payload = self.MTP.decrypt_and_verify(header + msg)
-        if msgType != b'\x03\x10' and msgType != b'\x03\x11':
-            raise CloseConnectionException("Wrong message type: " + msgType + "instead of 03 00 or 03 10")
-        return msgType, payload
+        if msg_type != b'\x03\x10' and msg_type != b'\x03\x11':
+            raise CloseConnectionException("Wrong message type: " + msg_type + "instead of 03 00 or 03 10")
+        return msg_type, payload
 
-    def __receive_and_save_file(self, filename, receivedFileHash, s):
+    def __receive_and_save_file(self, filename, received_file_hash, s):
         # open file first in write mode (overrides file if it exists!)
         with open(filename, 'wb') as f:
             print("Saving next file chunk...")
@@ -48,10 +48,10 @@ class ClientDownloadProtocol:
                 f.write(msg)
 
         file = open(filename, "r")
-        textFile = file.read().encode("utf-8")
-        downloadedFileHash = get_hash(textFile)
+        text_file = file.read().encode("utf-8")
+        downloaded_file_hash = get_hash(text_file)
         print("File downloaded successfully, checking hash...")
-        if downloadedFileHash != receivedFileHash:
+        if downloaded_file_hash != received_file_hash:
             raise CloseConnectionException("Hash faulty, closing connection!")
         file.close()
 
@@ -70,8 +70,8 @@ class ClientDownloadProtocol:
                 print("Download canceled.")
                 return
 
-            encryptedDownloadRequest = self.__create_and_encrypt_download_request()
-            s.sendall(encryptedDownloadRequest)
+            encrypted_download_request = self.__create_and_encrypt_download_request()
+            s.sendall(encrypted_download_request)
             self.__receive_and_save_file(filename, filehash, s)
         except CloseConnectionException as ce:
             raise ce

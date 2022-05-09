@@ -10,16 +10,16 @@ from protocols.common.utils import get_hash, get_file_info
 
 
 class ServerUploadProtocol:
-    def __init__(self, MTP):
-        self.MTP = MTP
+    def __init__(self, mtp):
+        self.MTP = mtp
 
     def __receive_next_file_chunk(self, s):
         header, msg = self.MTP.wait_for_message(s)
-        msgType = header[2:4]
+        msg_type = header[2:4]
         payload = self.MTP.decrypt_and_verify(header + msg)
-        if msgType != b'\x02\x00' and msgType != b'\x02\x01':
-            raise CloseConnectionException("Wrong message type: " + msgType + "instead of 02 00 or 02 10")
-        return msgType, payload
+        if msg_type != b'\x02\x00' and msg_type != b'\x02\x01':
+            raise CloseConnectionException("Wrong message type: " + msg_type + "instead of 02 00 or 02 10")
+        return msg_type, payload
 
     def __receive_and_save_file(self, filename, s):
         # open file first in write mode (overrides file if it exists!)
@@ -37,10 +37,10 @@ class ServerUploadProtocol:
         print("File uploaded successfully")
 
     def __create_and_encrypt_upload_response(self, filename, s):
-        fileHash, fileSize = get_file_info(filename)
-        resPayload = str(fileHash + "\n" + str(fileSize)).encode("utf-8")
+        file_hash, file_size = get_file_info(filename)
+        res_payload = str(file_hash + "\n" + str(file_size)).encode("utf-8")
 
-        msg = self.MTP.encrypt_and_auth(b'\x02\x10', resPayload)
+        msg = self.MTP.encrypt_and_auth(b'\x02\x10', res_payload)
         return msg
 
     def execute_upload_protocol(self, filename, s):

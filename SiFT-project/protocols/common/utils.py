@@ -10,8 +10,8 @@ def get_hash(payload):
 def get_file_info(path):
     size = os.path.getsize(path)
     file = open(path, "r")
-    fileHash = get_hash(file.read().encode("utf-8"))
-    return fileHash, size
+    file_hash = get_hash(file.read().encode("utf-8"))
+    return file_hash, size
 
 def check_dir(root, target):
     root = os.path.abspath(root)

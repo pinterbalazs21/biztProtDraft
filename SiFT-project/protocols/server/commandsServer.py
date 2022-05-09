@@ -4,48 +4,40 @@ import os
 import base64
 
 class ServerCommandsProtocol:
-    def __init__(self, MTP, userRoot):
+    def __init__(self, mtp, userRoot):
         self.userRoot = userRoot
         self.currentWD = userRoot
-        self.MTP = MTP
+        self.MTP = mtp
+        self.latest_hash = None
 
     # creates command response body
-    def __create_command_res(self, type, *args):
-        response = type + "\n" + self.latestHash
+    def __create_command_res(self, request_type, *args):
+        response = request_type + "\n" + self.latest_hash
         if args:  # has at least 1 param
             for resp in args:
                 response = response + "\n" + resp
         return response.encode("utf-8")
 
-    def encrypt_command_res(self, s, commandType, *args):
-        payload = self.__create_command_res(commandType, *args)
+    def encrypt_command_res(self, s, command_type, *args):
+        payload = self.__create_command_res(command_type, *args)
         response = self.MTP.encrypt_and_auth(b'\x01\x10', payload)
         s.sendall(response)
 
-   #def decrypt_command_msg(self, rawMSG):
-   #    decryptedPayload = self.MTP.decrypt_and_verify(rawMSG).decode("utf-8")
-   #    commandList = decryptedPayload.split("\n")
-   #    commandTypeStr = commandList[0]
-   #    args = ()
-   #    if len(commandList) > 1:
-   #        args = commandList[1:]
-   #    return commandTypeStr, args, decryptedPayload
-
     def accept_command_req(self, s):
         header, msg = self.MTP.wait_for_message(s)
-        msgType = header[2:4]
-        if msgType != b'\x01\x00':
-            raise CloseConnectionException("Wrong message type: " + msgType + "instead of 01 00")
-        rawMSG = header + msg
-        decryptedPayload = self.MTP.decrypt_and_verify(rawMSG).decode("utf-8")
-        commandList = decryptedPayload.split("\n")
-        command = commandList[0]
+        msg_type = header[2:4]
+        if msg_type != b'\x01\x00':
+            raise CloseConnectionException("Wrong message type: " + msg_type + "instead of 01 00")
+        raw_msg = header + msg
+        decrypted_payload = self.MTP.decrypt_and_verify(raw_msg).decode("utf-8")
+        command_list = decrypted_payload.split("\n")
+        command = command_list[0]
         args = ()
-        if len(commandList) > 1:
-            args = commandList[1:]
-        self.latestHash = get_hash(decryptedPayload.encode("utf-8"))
-        print("payload: ", self.latestHash)
-        print("payload hex: ", self.latestHash)
+        if len(command_list) > 1:
+            args = command_list[1:]
+        self.latest_hash = get_hash(decrypted_payload.encode("utf-8"))
+        print("payload: ", self.latest_hash)
+        print("payload hex: ", self.latest_hash)
         return command, args
 
 
@@ -67,12 +59,12 @@ class ServerCommandsProtocol:
             try:
                 if not check_dir(self.userRoot, self.currentWD):
                     raise Exception('Access denied!') # not possible to reach this
-                lstResult = os.listdir(self.currentWD)
-                lstStr = "\n".join(lstResult)
-                if not lstStr: # empty dir handling
-                    lstStr = ""
-                encodedStr = base64.b64encode(lstStr.encode('utf-8')).decode('utf-8')
-                self.encrypt_command_res(conn, command, 'success', encodedStr)
+                lst_result = os.listdir(self.currentWD)
+                lst_str = "\n".join(lst_result)
+                if not lst_str: # empty dir handling
+                    lst_str = ""
+                encoded_str = base64.b64encode(lst_str.encode('utf-8')).decode('utf-8')
+                self.encrypt_command_res(conn, command, 'success', encoded_str)
                 print("Sending success")
             except CloseConnectionException as ce:
                 raise ce
@@ -127,7 +119,7 @@ class ServerCommandsProtocol:
         elif command == "upl":  # 3 args
             try:
                 print("command request: upl")
-                size = int(args[1]) # TODO ezekkel semmit nem kell csinálni - spec szerint ja, érdekes
+                size = int(args[1])
                 hash = args[2]
                 path = os.path.normpath(os.path.join(self.currentWD, args[0]))
                 if not check_dir(self.userRoot, path):
@@ -151,11 +143,11 @@ class ServerCommandsProtocol:
                 print(path)
                 print("File will be downloaded from: ", path)
                 if os.path.exists(path) and os.path.isfile(path):
-                    fileHash, size = get_file_info(path)
+                    file_hash, size = get_file_info(path)
                     print("file size = " + str(size))
                     if size == 0:
                         raise Exception('File is empty')
-                    self.encrypt_command_res(conn, command, 'accept', str(size), fileHash)
+                    self.encrypt_command_res(conn, command, 'accept', str(size), file_hash)
                     downloadHandler.execute_download_protocol(path, conn)
                 else:
                     print("Exception, file does not exist")

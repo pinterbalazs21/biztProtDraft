@@ -15,12 +15,7 @@ from protocols.server.uploadServer import ServerUploadProtocol
 class SiFTServer:
     def __init__(self, port=5150):
         self.port = port
-        self.host = "localhost" # "10.71.0.167" # "localhost" # TODO put IP of server here
-        #generating public and private key
-        #self.keypair = RSA.generate(2048)
-        #self.pubKey = self.keypair.public_key()
-        #self.__savePubKey(self.keypair, "private.key")
-        #self.__savePubKey(self.pubKey, "public.key")
+        self.host = "localhost" # "10.71.0.167" # TODO put IP of server here
         with open("thyme-public.key", 'rb') as f:
             pubkeystr = f.read()
             self.pubKey = RSA.import_key(pubkeystr)
@@ -47,15 +42,15 @@ class SiFTServer:
                                  ).start()
 
     def listen(self, conn, addr):
-        msgHandler = MTP()
-        loginHandler = ServerLoginProtocol(msgHandler)
+        msg_handler = MTP()
+        login_handler = ServerLoginProtocol(msg_handler)
 
         with conn:
             try:
                 print(f"Connected by {addr}")
                 # accepts and verifies login request
                 # if ok: response, otherwise: close connection
-                loginHandler.accept_login_request(conn, self.keypair)
+                login_handler.accept_login_request(conn, self.keypair)
             except CloseConnectionException as ce:
                 print("Close Connection Exception caught:")
                 print(ce)
@@ -63,20 +58,21 @@ class SiFTServer:
                 print("Connection closed, thread terminated")
                 return
 
-            commandHandler = ServerCommandsProtocol(msgHandler, userRoot=os.getcwd())
-            downloadHandler = ServerDownloadProtocol(msgHandler)
-            uploadHandler = ServerUploadProtocol(msgHandler)
+            command_handler = ServerCommandsProtocol(msg_handler, userRoot=os.getcwd())
+            download_handler = ServerDownloadProtocol(msg_handler)
+            upload_handler = ServerUploadProtocol(msg_handler)
             # waiting for message loop (commands protocol)
             while True:
                 try:
-                    command, args = commandHandler.accept_command_req(conn)
-                    commandHandler.handle_command_req(command, args, conn, downloadHandler, uploadHandler)
+                    command, args = command_handler.accept_command_req(conn)
+                    command_handler.handle_command_req(command, args, conn, download_handler, upload_handler)
                 except CloseConnectionException as ce:
                     print("Close Connection Exception caught:")
                     print(ce)
                     conn.close()
                     print("Connection closed, thread terminated")
                     return
+
 
 server = SiFTServer()
 server.listen_all()

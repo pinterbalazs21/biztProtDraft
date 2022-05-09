@@ -10,14 +10,14 @@ from protocols.common.closeConnectionException import CloseConnectionException
 
 
 class ServerDownloadProtocol:
-    def __init__(self, MTP):
-        self.MTP = MTP
+    def __init__(self, mtp):
+        self.MTP = mtp
 
     def __wait_for_download_request(self, s):
         header, tail = self.MTP.wait_for_message(s)
-        msgType = header[2:4]
-        if msgType != b'\x03\x00':
-            raise CloseConnectionException("Wrong message type: " + msgType + "instead of 03 00")
+        msg_type = header[2:4]
+        if msg_type != b'\x03\x00':
+            raise CloseConnectionException("Wrong message type: " + msg_type + "instead of 03 00")
         msg = self.MTP.decrypt_and_verify(header + tail)
         if msg == b'Cancel':
             print("Received \'Cancel\' download request of download protocol from client")
@@ -28,8 +28,8 @@ class ServerDownloadProtocol:
         else:
             raise CloseConnectionException("Bad download request (not Cancel or Ready)")
 
-    def __create_and_encrypt_chunk(self, f, isLast=False):
-        if isLast:
+    def __create_and_encrypt_chunk(self, f, is_last=False):
+        if is_last:
             dnloadres = self.MTP.encrypt_and_auth(b'\x03\x11', f)
         else: 
             dnloadres = self.MTP.encrypt_and_auth(b'\x03\x10', f)
@@ -41,19 +41,19 @@ class ServerDownloadProtocol:
     def __send_file_chunks(self, filename, s):
         with open(filename, "rb") as f:
             chunk = f.read(1024)
-            nextChunk = f.read(1024)
+            next_chunk = f.read(1024)
 
             while True:
                 if not chunk:
                     break
-                elif not nextChunk:
-                    dnloadres = self.__create_and_encrypt_chunk(chunk, isLast=True)
+                elif not next_chunk:
+                    dnloadres = self.__create_and_encrypt_chunk(chunk, is_last=True)
                 else:
                     dnloadres = self.__create_and_encrypt_chunk(chunk)
                 print("Sending next file chunk...")
                 self.__send_chunk(dnloadres, s)
-                chunk = nextChunk
-                nextChunk = f.read(1024)
+                chunk = next_chunk
+                next_chunk = f.read(1024)
 
     def execute_download_protocol(self, path, s):
         try:

@@ -34,21 +34,21 @@ class ClientLoginProtocol:
         self.loginHash = h.hexdigest()
 
     def __create_login_request(self, username, password):
-        clientRandom = Random.get_random_bytes(16).hex()
-        loginPayload = str(time.time_ns()) + "\n" + username + "\n" + password + "\n" + clientRandom
+        client_random = Random.get_random_bytes(16).hex()
+        login_payload = str(time.time_ns()) + "\n" + username + "\n" + password + "\n" + client_random
 
-        loginPayload = loginPayload.encode("utf-8")
-        clientRandom = clientRandom.encode("utf-8")
+        login_payload = login_payload.encode("utf-8")
+        client_random = client_random.encode("utf-8")
 
-        return loginPayload, clientRandom  # type: str
+        return login_payload, client_random  # type: str
 
-    def __encrypt_login_request(self, loginReq):  # loginReq == payload
+    def __encrypt_login_request(self, login_req):  # loginReq == payload
         tk = Random.get_random_bytes(32)
-        msgLen = 16 + len(loginReq) + 12 + 256  # length of header, (encrypted) payload, auth mac + ETK
-        msg = self.MTP.encrypt_and_auth(b'\x00\x00', loginReq, msgLen, tk)
+        msg_len = 16 + len(login_req) + 12 + 256  # length of header, (encrypted) payload, auth mac + ETK
+        msg = self.MTP.encrypt_and_auth(b'\x00\x00', login_req, msg_len, tk)
         pubkey = self.__load_publickey()
-        RSAcipher = PKCS1_OAEP.new(pubkey)
-        etk = RSAcipher.encrypt(tk)
+        rsa_cipher = PKCS1_OAEP.new(pubkey)
+        etk = rsa_cipher.encrypt(tk)
         return msg + etk, tk
 
     def __decrypt_login_response(self, tk, msg):
@@ -67,8 +67,8 @@ class ClientLoginProtocol:
 
     def __receive_connection_confirmation(self, s, client_random, tk):
         header, tail = self.MTP.wait_for_message(s)
-        msgType = header[2:4]
-        if msgType == b'\x00\x10':
+        msg_type = header[2:4]
+        if msg_type == b'\x00\x10':
             payload = self.__decrypt_login_response(tk, header + tail)
             server_random = payload[65:]
             # final symmetric key:
@@ -82,7 +82,7 @@ class ClientLoginProtocol:
             self.__create_final_key(ikey, salt)
             print("Connection established")
             return
-        raise CloseConnectionException("Wrong message type: " + msgType + " instead of 00 10")
+        raise CloseConnectionException("Wrong message type: " + msg_type + " instead of 00 10")
 
     def execute_login(self, s):
         """
@@ -90,8 +90,8 @@ class ClientLoginProtocol:
         :param s: socket to use when sending and receiving login messages
         """
         username, pwd = self.__prompt_user_data()
-        loginPayload, clientRandom = self.__create_login_request(username, pwd)
-        encryptedLoginRequest, tk = self.__encrypt_login_request(loginPayload)
-        s.sendall(encryptedLoginRequest)
-        self.__save_hash(loginPayload)  # the description said to save the hash only after sending the request
-        self.__receive_connection_confirmation(s, clientRandom, tk)
+        login_payload, client_random = self.__create_login_request(username, pwd)
+        encrypted_login_request, tk = self.__encrypt_login_request(login_payload)
+        s.sendall(encrypted_login_request)
+        self.__save_hash(login_payload)  # the description said to save the hash only after sending the request
+        self.__receive_connection_confirmation(s, client_random, tk)

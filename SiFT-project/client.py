@@ -37,14 +37,15 @@ class SiFTClient():
             # start commands protocol
             while True:
                 try:
-                    rawCommmand = input()
-                    self.commandHandler.handle_command(rawCommmand, s, self.downloadHandler, self.uploadHandler)
+                    raw_command = input()
+                    self.commandHandler.handle_command(raw_command, s, self.downloadHandler, self.uploadHandler)
                 except CloseConnectionException as ce:
                     print("Close Connection Exception caught:")
                     print(ce)
                     s.close()
                     print("Connection closed, thread terminated")
                     return
+
 
 client = SiFTClient()
 client.connect()

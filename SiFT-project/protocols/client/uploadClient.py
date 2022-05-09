@@ -18,23 +18,23 @@ class ClientUploadProtocol:
     def __wait_for_response(self, filename, s):
         print("Upload complete, waiting for server to respond...")
         header, tail = self.MTP.wait_for_message(s)
-        msgType = header[2:4]
-        if msgType != b'\x02\x10':
-            raise CloseConnectionException("Wrong message type: " + msgType + "instead of 02 10")
+        msg_type = header[2:4]
+        if msg_type != b'\x02\x10':
+            raise CloseConnectionException("Wrong message type: " + msg_type + "instead of 02 10")
         msg = self.MTP.decrypt_and_verify(header + tail).decode("utf-8")
-        msgPayload = msg.split("\n")
-        receivedFileHash = msgPayload[0]
-        print(receivedFileHash)
-        receivedFileSize = int(msgPayload[1])
-        print(receivedFileSize)
+        msg_payload = msg.split("\n")
+        received_file_hash = msg_payload[0]
+        print(received_file_hash)
+        received_file_size = int(msg_payload[1])
+        print(received_file_size)
 
-        localFileHash, localFileSize = get_file_info(filename)
-        print(localFileHash)
-        print(localFileSize)
+        local_file_hash, local_file_size = get_file_info(filename)
+        print(local_file_hash)
+        print(local_file_size)
 
-        if localFileHash != receivedFileHash:
+        if local_file_hash != received_file_hash:
             raise CloseConnectionException("File hash of uploaded file and local file are different! Closing connection.")
-        if localFileSize != receivedFileSize:
+        if local_file_size != received_file_size:
             raise CloseConnectionException("File size of uploaded file and local file are different! Closing connection.")
 
     def __create_and_encrypt_chunk(self, f, isLast=False):
@@ -50,19 +50,19 @@ class ClientUploadProtocol:
     def __send_file_chunks(self, filename, s):
         with open(filename, "rb") as f:
             chunk = f.read(1024)
-            nextChunk = f.read(1024)
+            next_chunk = f.read(1024)
 
             while True:
                 if not chunk:
                     break
-                elif not nextChunk:
+                elif not next_chunk:
                     dnloadres = self.__create_and_encrypt_chunk(chunk, isLast=True)
                 else:
                     dnloadres = self.__create_and_encrypt_chunk(chunk)
                 print("Sending next file chunk...")
                 self.__send_chunk(dnloadres, s)
-                chunk = nextChunk
-                nextChunk = f.read(1024)
+                chunk = next_chunk
+                next_chunk = f.read(1024)
 
     def execute_upload_protocol(self, path, s):
         try:

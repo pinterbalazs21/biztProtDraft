@@ -15,13 +15,22 @@ from protocols.server.uploadServer import ServerUploadProtocol
 class SiFTServer:
     def __init__(self, port=5150):
         self.port = port
-        self.host = "localhost"  # "10.71.0.167" # TODO put IP of server here
-        with open("public.key", 'rb') as f:
-            pubkeystr = f.read()
-            self.pubKey = RSA.import_key(pubkeystr)
-        with open("private.key", 'rb') as f:
-            asd = f.read()
-            self.keypair = RSA.import_key(asd)
+        self.host = "localhost"  # TODO put IP of server here
+
+        #generating public and private key, saving public key
+        self.keypair = RSA.generate(2048)
+        self.pubKey = self.keypair.public_key()
+        self.__save_pub_key(self.pubKey, "public.key")
+        #saving the private key is also possible
+        #self.__save_pub_key(self.keypair, "private.key")
+
+        #Todo comment the previous key generation, and uncomment the following 6 lines in case of fixed keypairs.
+        #with open("public.key", 'rb') as f:
+        #    pubkeystr = f.read()
+        #    self.pubKey = RSA.import_key(pubkeystr)
+        #with open("private.key", 'rb') as f:
+        #    asd = f.read()
+        #    self.keypair = RSA.import_key(asd)
         print("Server init")
 
     def __save_pub_key(self, pubkey, pubkeyfile):

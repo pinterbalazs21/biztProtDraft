@@ -16,7 +16,6 @@ class ClientUploadProtocol:
         self.MTP = MTP
 
     def __wait_for_response(self, filename, s):
-        print("Upload complete, waiting for server to respond...")
         header, tail = self.MTP.wait_for_message(s)
         msg_type = header[2:4]
         if msg_type != b'\x02\x10':
@@ -32,6 +31,7 @@ class ClientUploadProtocol:
             raise CloseConnectionException("File hash of uploaded file and local file are different! Closing connection.")
         if local_file_size != received_file_size:
             raise CloseConnectionException("File size of uploaded file and local file are different! Closing connection.")
+        print("Upload complete")
 
     def __create_and_encrypt_chunk(self, f, isLast=False):
         if isLast:

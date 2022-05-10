@@ -50,9 +50,9 @@ class ClientDownloadProtocol:
         file = open(filename, "r")
         text_file = file.read().encode("utf-8")
         downloaded_file_hash = get_hash(text_file)
-        print("File downloaded successfully, checking hash...")
         if downloaded_file_hash != received_file_hash:
             raise CloseConnectionException("Hash faulty, closing connection!")
+        print("File downloaded successfully")
         file.close()
 
     def execute_download_protocol(self, filename, filehash, s):

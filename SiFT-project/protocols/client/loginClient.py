@@ -71,11 +71,8 @@ class ClientLoginProtocol:
             payload = self.__decrypt_login_response(tk, header + tail)
             server_random = payload[65:]
             # final symmetric key:
-            print("salt: ", self.loginHash)
             client_random = bytes.fromhex(client_random.decode("utf-8"))
             server_random = bytes.fromhex(server_random.decode("utf-8"))
-            print("client random: ", client_random.hex())
-            print("server random: ", server_random.hex())
             ikey = client_random + server_random
             salt = bytes.fromhex(self.loginHash)
             self.__create_final_key(ikey, salt)

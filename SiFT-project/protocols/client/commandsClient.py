@@ -24,8 +24,6 @@ class ClientCommandsProtocol:
         return self.MTP.encrypt_and_auth(b'\x01\x00', payload), payload
 
     def __save_hash(self, msg):
-        print("payload: ", msg)
-        print("payload hex: ", msg.hex())
         h = SHA256.new()
         h.update(msg)
         self.latestHash = h.hexdigest()
@@ -81,8 +79,6 @@ class ClientCommandsProtocol:
         if msg_type != b'\x01\x10':
             raise CloseConnectionException("Wrong message type: " + msg_type + " instead of 01 10")
         command, args = self.__decrypt_command_response_msg(header + msg)
-        print("hash: ", args[0])
-        print("latest hash: ", self.latestHash)
         if self.latestHash != args[0]:
             raise CloseConnectionException("Wrong hash in command response")
         commands_to_fail = ['pwd', 'lst', 'chd', 'mkd', 'del']

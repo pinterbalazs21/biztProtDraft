@@ -52,10 +52,6 @@ class MTP:
             payload = ae.decrypt_and_verify(encrypted_payload, authtag)
         except Exception as e:
             raise CloseConnectionException("Error: decryption of message failed: " + str(e))
-        print("Operation was successful: message is intact, content is decrypted.")
-        # TODO delete this if not debugging
-        # print("payload:")
-        # print(payload)
         return payload
 
     def encrypt_and_auth(self, typ, payload, msg_length=0, key=None):
@@ -65,11 +61,6 @@ class MTP:
         :param msg_length: don't use it if you need the length to be: of the entire message, including header, in bytes, in big endian
         :return: encrypted message
         """
-        # TODO delete this if not debugging
-        # print("payload to be encrypted:")
-        # print(payload)
-        # print("-----")
-        # = 0, = None: derived default values
         if key is None:
             key = self.finalKey
         if msg_length == 0:
